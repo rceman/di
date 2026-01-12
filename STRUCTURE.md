@@ -6,6 +6,8 @@ Read this file first when working in the repo. It is the source of truth for whe
 - `src/App.tsx`: App shell, routes, page tabs, page switching.
 - `src/pages/LieliskaPage.tsx`: Lieliska DK page UI and state orchestration.
 - `src/pages/DavanuPage.tsx`: Davanu serviss page UI and state orchestration.
+### CI/CD
+- `.github/workflows/deploy.yml`: GitHub Pages deploy on push to main.
 
 ### Domain logic
 - `src/lib/excel/lieliska.ts`: Excel parsing, Lieliska transform logic, and XLSX export.
