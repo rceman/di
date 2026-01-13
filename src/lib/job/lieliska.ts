@@ -56,7 +56,11 @@ export const runLieliskaJob = (preview: ExcelPreviewData): LieliskaJobResult => 
       (match) => !usedTargets.has(match.targetIndex)
     );
     const available = matches.find((match) => !usedTargets.has(match.targetIndex));
-    const chosen = availableSumMatch ?? available ?? sumMatches[0] ?? matches[0];
+    const chosen = availableSumMatch ?? available;
+    if (!chosen) {
+      unmatchedSourceRows.push([svitrkods, summa]);
+      return;
+    }
     usedTargets.add(chosen.targetIndex);
     tempPairs[chosen.targetIndex] = { svitrkods, summa };
   });
