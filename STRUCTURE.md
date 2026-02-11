@@ -15,6 +15,7 @@ Read this file first when working in the repo. It is the source of truth for whe
 - `src/lib/job/lieliska.ts`: Lieliska Run Job logic wrapper.
 - `src/lib/job/davanu.ts`: Davanu Run Job logic template.
 - `src/lib/job/davanu_view.ts`: Davanu preview table derivations.
+- `src/lib/job/davanu_columns.ts`: Davanu PDF column index detection by header name.
 - `src/lib/pdf/davanu.ts`: PDF parsing, Davanu table reconstruction, and XLSX export.
 - `src/lib/pdf/davanu_parser.ts`: PDF table parsing helpers for Davanu.
 - `src/lib/pdf/worker.ts`: pdfjs-dist worker setup for the browser.
@@ -30,6 +31,10 @@ Read this file first when working in the repo. It is the source of truth for whe
 - `scripts/token_count.mjs`: Token counter (o200k_base) for file size checks.
 - `scripts/token_report.mjs`: Token report for all src files.
 - `data/akts.pdf`: Sample PDF.
+
+### Tests
+- `tests/davanu_columns.test.js`: Unit tests for Davanu PDF column detection.
+- `tests/davanu_job.test.js`: Unit tests for Davanu run job matching logic.
 
 ### Notes
 - Do not place parsing/transform logic in `src/App.tsx`.

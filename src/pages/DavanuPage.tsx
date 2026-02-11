@@ -29,6 +29,11 @@ import {
   getUnmatchedRezervacijas,
   getUnmatchedVeidlapas,
 } from "../lib/job/davanu_view";
+import {
+  getDavanuPdfCodeIndex,
+  getDavanuPdfDateIndex,
+  getDavanuPdfSumIndex,
+} from "../lib/job/davanu_columns";
 
 const RUN_JOB_LABEL = "Run Job";
 const DOWNLOAD_LABEL = "Download Table";
@@ -66,6 +71,23 @@ export default function DavanuPage() {
     () => getApproxRezervacijas(excelPreview, jobResult),
     [excelPreview, jobResult]
   );
+
+  const pdfDebug = useMemo(() => {
+    if (!pdfPreview) {
+      return null;
+    }
+    const codeIndex = getDavanuPdfCodeIndex(pdfPreview.headers);
+    const dateIndex = getDavanuPdfDateIndex(pdfPreview.headers);
+    const sumIndex = getDavanuPdfSumIndex(pdfPreview.headers);
+    return {
+      codeIndex,
+      dateIndex,
+      sumIndex,
+      codeHeader: pdfPreview.headers[codeIndex] ?? "",
+      dateHeader: pdfPreview.headers[dateIndex] ?? "",
+      sumHeader: pdfPreview.headers[sumIndex] ?? "",
+    };
+  }, [pdfPreview]);
 
   const handlePdfChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
@@ -285,6 +307,16 @@ export default function DavanuPage() {
             loadingMessage="Parsing PDF..."
             emptyMessage="Upload a PDF to see the preview."
           />
+          {pdfDebug ? (
+            <div
+              id="davanu-debug"
+              className="mt-3 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
+            >
+              PDF debug: code[{pdfDebug.codeIndex}] "{pdfDebug.codeHeader}", date[
+              {pdfDebug.dateIndex}] "{pdfDebug.dateHeader}", sum[{pdfDebug.sumIndex}]
+              " {pdfDebug.sumHeader}"
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 

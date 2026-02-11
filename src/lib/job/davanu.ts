@@ -1,5 +1,10 @@
 import type { DavanuExcelPreview } from "../excel/davanu";
 import type { PdfPreview } from "../pdf/davanu";
+import {
+  getDavanuPdfCodeIndex,
+  getDavanuPdfDateIndex,
+  getDavanuPdfSumIndex,
+} from "./davanu_columns";
 
 export type DavanuJobInput = {
   excel: DavanuExcelPreview;
@@ -57,9 +62,9 @@ export const runDavanuJob = ({ excel, pdf }: DavanuJobInput): DavanuJobResult =>
   const excelSumIndex = 5;
   const excelSvitrkodsIndex = excel.headers.length - 2;
   const excelSummaIndex = excel.headers.length - 1;
-  const pdfCodeIndex = 1;
-  const pdfSumIndex = pdf.headers.length - 1;
-  const pdfDateIndex = 3;
+  const pdfCodeIndex = getDavanuPdfCodeIndex(pdf.headers);
+  const pdfSumIndex = getDavanuPdfSumIndex(pdf.headers);
+  const pdfDateIndex = getDavanuPdfDateIndex(pdf.headers);
   const excelDateIndex = 2;
 
   const excelRows = excel.rows.map((row, index) => ({
