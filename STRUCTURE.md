@@ -16,6 +16,7 @@ Read this file first when working in the repo. It is the source of truth for whe
 - `src/lib/job/davanu.ts`: Davanu Run Job logic template.
 - `src/lib/job/davanu_view.ts`: Davanu preview table derivations.
 - `src/lib/job/davanu_columns.ts`: Davanu PDF column index detection by header name.
+- `src/lib/job/davanu_clone.ts`: Davanu snapshot cloning helpers for reruns.
 - `src/lib/pdf/davanu.ts`: PDF parsing, Davanu table reconstruction, and XLSX export.
 - `src/lib/pdf/davanu_parser.ts`: PDF table parsing helpers for Davanu.
 - `src/lib/pdf/davanu_header.ts`: Pure header detection for Davanu PDF lines.

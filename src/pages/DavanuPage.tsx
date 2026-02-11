@@ -34,6 +34,7 @@ import {
   getDavanuPdfDateIndex,
   getDavanuPdfSumIndex,
 } from "../lib/job/davanu_columns";
+import { cloneExcelPreview, clonePdfPreview } from "../lib/job/davanu_clone";
 
 const RUN_JOB_LABEL = "Run Job";
 const DOWNLOAD_LABEL = "Download Table";
@@ -55,6 +56,9 @@ export default function DavanuPage() {
 
   const [hasRunJob, setHasRunJob] = useState(false);
   const [jobResult, setJobResult] = useState<DavanuJobResult | null>(null);
+  const [runBasePdfPreview, setRunBasePdfPreview] = useState<PdfPreview | null>(null);
+  const [runBaseExcelPreview, setRunBaseExcelPreview] =
+    useState<DavanuExcelPreview | null>(null);
 
   const canRunJob = useMemo(
     () => Boolean(pdfPreview && excelPreview) && !pdfLoading && !excelLoading,
@@ -98,6 +102,8 @@ export default function DavanuPage() {
     setPdfFile(file);
     setPdfPreview(null);
     setBasePdfPreview(null);
+    setRunBasePdfPreview(null);
+    setRunBaseExcelPreview(null);
     setPdfError(null);
     setHasRunJob(false);
     setJobResult(null);
@@ -114,7 +120,7 @@ export default function DavanuPage() {
       const buffer = await file.arrayBuffer();
       const preview = await extractDavanuPdfTable(buffer);
       setPdfPreview(preview);
-      setBasePdfPreview(preview);
+      setBasePdfPreview(clonePdfPreview(preview));
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to read PDF.";
       setPdfError(message);
@@ -128,6 +134,8 @@ export default function DavanuPage() {
     setExcelFile(file);
     setExcelPreview(null);
     setBaseExcelPreview(null);
+    setRunBaseExcelPreview(null);
+    setRunBasePdfPreview(null);
     setExcelError(null);
     setHasRunJob(false);
     setJobResult(null);
@@ -143,7 +151,7 @@ export default function DavanuPage() {
     try {
       const preview = await parseDavanuExcel(file);
       setExcelPreview(preview);
-      setBaseExcelPreview(preview);
+      setBaseExcelPreview(cloneExcelPreview(preview));
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to read Excel.";
       setExcelError(message);
@@ -154,8 +162,24 @@ export default function DavanuPage() {
 
   const handleRunJob = () => {
     if (!canRunJob) return;
-    if (!baseExcelPreview || !basePdfPreview) return;
-    const result = runDavanuJob({ excel: baseExcelPreview, pdf: basePdfPreview });
+    const firstRunSnapshotMissing = !runBaseExcelPreview || !runBasePdfPreview;
+    const sourceExcel =
+      firstRunSnapshotMissing
+        ? baseExcelPreview
+        : runBaseExcelPreview;
+    const sourcePdf =
+      firstRunSnapshotMissing
+        ? basePdfPreview
+        : runBasePdfPreview;
+    if (!sourceExcel || !sourcePdf) return;
+    if (firstRunSnapshotMissing) {
+      setRunBaseExcelPreview(cloneExcelPreview(sourceExcel));
+      setRunBasePdfPreview(clonePdfPreview(sourcePdf));
+    }
+    const result = runDavanuJob({
+      excel: cloneExcelPreview(sourceExcel),
+      pdf: clonePdfPreview(sourcePdf),
+    });
     setJobResult(result);
     setExcelPreview(result.excel);
     setHasRunJob(true);
