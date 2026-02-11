@@ -1,4 +1,5 @@
 import * as pdfjsLib from "pdfjs-dist";
+import { findDavanuHeaderLineIndex } from "./davanu_header";
 
 export const CFG = {
   rowEps: 2.0,
@@ -20,13 +21,6 @@ const fixPdfText = (value: string) => {
 
 export const normStr = (value: string) =>
   fixPdfText(value).replace(/\s+/g, " ").trim();
-
-const normalizeSearchText = (value: string) =>
-  normStr(value)
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "");
 
 const mergeCellText = (prev: string, next: string) => {
   if (!prev) return next;
@@ -132,24 +126,6 @@ export const groupIntoLines = (
   return lines;
 };
 
-const findHeaderLineIndex = (lines: { items: { str: string }[] }[]) => {
-  for (let i = 0; i < lines.length; i++) {
-    const text = normalizeSearchText(
-      lines[i].items.map((x) => x.str).join(" ")
-    );
-    if (text.includes("nr") && (text.includes("rezerv") || text.includes("pakalpoj"))) {
-      return i;
-    }
-  }
-  for (let i = 0; i < lines.length; i++) {
-    const text = normalizeSearchText(
-      lines[i].items.map((x) => x.str).join(" ")
-    );
-    if (text.includes("rezerv") && text.includes("kods")) return i;
-  }
-  return -1;
-};
-
 const buildRowsFromLines = (
   lines: { items: { str: string; x: number }[] }[],
   anchors: number[],
@@ -157,9 +133,15 @@ const buildRowsFromLines = (
 ) => {
   const rows: string[][] = [];
   for (let i = startIndex; i < lines.length; i++) {
-    const lineText = normalizeSearchText(
-      lines[i].items.map((x) => x.str).join(" ")
-    );
+    const lineText = lines[i].items
+      .map((x) => x.str)
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "");
     if (lineText.startsWith("summa") || lineText.startsWith("starpiba")) {
       break;
     }
@@ -207,7 +189,7 @@ export const extractTableFromLines = (
   lines: { items: { str: string; x: number }[] }[],
   previous: { header: string[]; anchors: number[] } | null
 ) => {
-  const headerIdx = findHeaderLineIndex(lines);
+  const headerIdx = findDavanuHeaderLineIndex(lines);
   if (headerIdx >= 0) {
     const headerBlock: typeof lines = [];
     for (let i = headerIdx; i < lines.length; i++) {
@@ -244,20 +226,6 @@ export const extractTableFromLines = (
   }
 
   if (!previous) {
-    const firstDataIndex = lines.findIndex((line) => {
-      const cells = splitLineIntoCells(line.items, CFG.cellGap);
-      const first = normStr(cells[0]?.text ?? "");
-      return first && /^\d+/.test(first);
-    });
-    if (firstDataIndex >= 0) {
-      const cells = splitLineIntoCells(lines[firstDataIndex].items, CFG.cellGap);
-      const anchors = cluster1D(cells.map((c) => c.x), CFG.colClusterGap);
-      const header = Array.from({ length: anchors.length }, (_, index) =>
-        `Column ${index + 1}`
-      );
-      const rows = buildRowsFromLines(lines, anchors, firstDataIndex);
-      return { header, anchors, rows };
-    }
     throw new Error("Header line not found (could be scanned PDF or different layout).");
   }
 

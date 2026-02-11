@@ -18,6 +18,7 @@ Read this file first when working in the repo. It is the source of truth for whe
 - `src/lib/job/davanu_columns.ts`: Davanu PDF column index detection by header name.
 - `src/lib/pdf/davanu.ts`: PDF parsing, Davanu table reconstruction, and XLSX export.
 - `src/lib/pdf/davanu_parser.ts`: PDF table parsing helpers for Davanu.
+- `src/lib/pdf/davanu_header.ts`: Pure header detection for Davanu PDF lines.
 - `src/lib/pdf/worker.ts`: pdfjs-dist worker setup for the browser.
 
 ### UI primitives
@@ -35,6 +36,7 @@ Read this file first when working in the repo. It is the source of truth for whe
 ### Tests
 - `tests/davanu_columns.test.js`: Unit tests for Davanu PDF column detection.
 - `tests/davanu_job.test.js`: Unit tests for Davanu run job matching logic.
+- `tests/davanu_parser.test.js`: Unit tests for PDF header detection edge cases.
 
 ### Notes
 - Do not place parsing/transform logic in `src/App.tsx`.

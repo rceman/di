@@ -14,12 +14,29 @@ const ROUTES = {
   [PAGES.davanu]: "/davanu_serviss",
 } as const;
 
+const BASE_URL = import.meta.env.BASE_URL.replace(/\/+$/, "");
+
+const withBase = (path: string) => {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${BASE_URL}${normalizedPath}` || normalizedPath;
+};
+
+const withoutBase = (pathname: string) => {
+  if (!BASE_URL || BASE_URL === "/") {
+    return pathname;
+  }
+  return pathname.startsWith(BASE_URL)
+    ? pathname.slice(BASE_URL.length) || "/"
+    : pathname;
+};
+
 export default function App() {
   const [activePage, setActivePage] = useState<string>(PAGES.lieliska);
 
   useEffect(() => {
     const resolvePage = (pathname: string) => {
-      if (pathname === ROUTES[PAGES.davanu]) {
+      const localPath = withoutBase(pathname);
+      if (localPath === ROUTES[PAGES.davanu]) {
         return PAGES.davanu;
       }
       return PAGES.lieliska;
@@ -28,8 +45,9 @@ export default function App() {
     const handlePopState = () => {
       const nextPage = resolvePage(window.location.pathname);
       setActivePage(nextPage);
-      if (window.location.pathname === "/") {
-        window.history.replaceState(null, "", ROUTES[PAGES.lieliska]);
+      const localPath = withoutBase(window.location.pathname);
+      if (localPath === "/") {
+        window.history.replaceState(null, "", withBase(ROUTES[PAGES.lieliska]));
       }
     };
 
@@ -40,7 +58,7 @@ export default function App() {
 
   const navigateTo = (page: string) => {
     const nextPath = ROUTES[page as keyof typeof ROUTES] ?? ROUTES[PAGES.lieliska];
-    window.history.pushState(null, "", nextPath);
+    window.history.pushState(null, "", withBase(nextPath));
     setActivePage(page);
   };
 
