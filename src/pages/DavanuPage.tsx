@@ -41,11 +41,15 @@ const DOWNLOAD_LABEL = "Download Table";
 export default function DavanuPage() {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [pdfPreview, setPdfPreview] = useState<PdfPreview | null>(null);
+  const [basePdfPreview, setBasePdfPreview] = useState<PdfPreview | null>(null);
   const [pdfError, setPdfError] = useState<string | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
 
   const [excelFile, setExcelFile] = useState<File | null>(null);
   const [excelPreview, setExcelPreview] = useState<DavanuExcelPreview | null>(null);
+  const [baseExcelPreview, setBaseExcelPreview] = useState<DavanuExcelPreview | null>(
+    null
+  );
   const [excelError, setExcelError] = useState<string | null>(null);
   const [excelLoading, setExcelLoading] = useState(false);
 
@@ -93,6 +97,7 @@ export default function DavanuPage() {
     const file = event.target.files?.[0] ?? null;
     setPdfFile(file);
     setPdfPreview(null);
+    setBasePdfPreview(null);
     setPdfError(null);
     setHasRunJob(false);
     setJobResult(null);
@@ -109,6 +114,7 @@ export default function DavanuPage() {
       const buffer = await file.arrayBuffer();
       const preview = await extractDavanuPdfTable(buffer);
       setPdfPreview(preview);
+      setBasePdfPreview(preview);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to read PDF.";
       setPdfError(message);
@@ -121,6 +127,7 @@ export default function DavanuPage() {
     const file = event.target.files?.[0] ?? null;
     setExcelFile(file);
     setExcelPreview(null);
+    setBaseExcelPreview(null);
     setExcelError(null);
     setHasRunJob(false);
     setJobResult(null);
@@ -136,6 +143,7 @@ export default function DavanuPage() {
     try {
       const preview = await parseDavanuExcel(file);
       setExcelPreview(preview);
+      setBaseExcelPreview(preview);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to read Excel.";
       setExcelError(message);
@@ -146,8 +154,8 @@ export default function DavanuPage() {
 
   const handleRunJob = () => {
     if (!canRunJob) return;
-    if (!excelPreview || !pdfPreview) return;
-    const result = runDavanuJob({ excel: excelPreview, pdf: pdfPreview });
+    if (!baseExcelPreview || !basePdfPreview) return;
+    const result = runDavanuJob({ excel: baseExcelPreview, pdf: basePdfPreview });
     setJobResult(result);
     setExcelPreview(result.excel);
     setHasRunJob(true);

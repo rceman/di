@@ -32,6 +32,7 @@ Read this file first when working in the repo. It is the source of truth for whe
 - `scripts/token_count.mjs`: Token counter (o200k_base) for file size checks.
 - `scripts/token_report.mjs`: Token report for all src files.
 - `data/akts.pdf`: Sample PDF.
+- `public/404.html`: GitHub Pages SPA fallback redirect for direct route links.
 
 ### Tests
 - `tests/davanu_columns.test.js`: Unit tests for Davanu PDF column detection.
