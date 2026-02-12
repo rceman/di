@@ -84,8 +84,8 @@ describe("runLieliskaJob", () => {
     };
 
     const normalized = ensureLieliskaRunSchema(preview);
-    expect(normalized.headers.at(-2)).toBe("Svitrkods");
-    expect(normalized.headers.at(-1)).toBe("Summa");
+    expect(normalized.headers.at(-2)).toBe("Svītrkods");
+    expect(normalized.headers.at(-1)).toBe("Summa, €");
     expect(normalized.rows[0].at(-2)).toBe("");
     expect(normalized.rows[0].at(-1)).toBe("");
   });
@@ -103,5 +103,26 @@ describe("runLieliskaJob", () => {
     };
 
     expect(() => ensureLieliskaRunSchema(preview)).toThrow("Expected Veidlapas Nr. column.");
+  });
+
+  it("uses sourcePairs when first sheet has no inline Svitrkods/Summa columns", () => {
+    const firstSheetRows = [
+      ["A", "1", "01.01.2026.", "D", "X", "30", "EUR", "G", "R1", "50", "Given", "981111111111005996", "", ""],
+      ["A", "2", "01.01.2026.", "D", "X", "100", "EUR", "G", "R2", "50", "Given", "981111111111006818", "", ""],
+    ];
+    const preview = {
+      ...createPreview(firstSheetRows),
+      sourcePairs: [
+        ["000000000000005996", "30"],
+        ["000000000000006818", "100"],
+      ],
+    };
+
+    const result = runLieliskaJob(preview);
+    expect(result.rows[0][12]).toBe("000000000000005996");
+    expect(result.rows[0][13]).toBe("30");
+    expect(result.rows[1][12]).toBe("000000000000006818");
+    expect(result.rows[1][13]).toBe("100");
+    expect(result.unmatchedSvitrkods).toEqual([]);
   });
 });

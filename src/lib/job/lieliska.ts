@@ -38,7 +38,7 @@ export const ensureLieliskaRunSchema = (
 
   // Compatibility mode for files that end with Veidlapas Nr. and miss tail columns.
   if (veidlapasIndex === headers.length - 1) {
-    const nextHeaders = [...headers, "Svitrkods", "Summa"];
+    const nextHeaders = [...headers, "Svītrkods", "Summa, €"];
     const nextRows = rows.map((row) => [...row, "", ""]);
     return {
       ...preview,
@@ -82,18 +82,24 @@ export const runLieliskaJob = (preview: ExcelPreviewData): LieliskaJobResult => 
   const veidlapasIndex = columnCount - 3;
   const svitrkodsIndex = columnCount - 2;
   const summaIndex = columnCount - 1;
-  const sourceRows = preview.rows.slice(0, preview.sourceRowCount);
-  const baseRows = sourceRows.map((row) => row.slice());
+  const targetRows = preview.rows.slice(0, preview.sourceRowCount);
+  const baseRows = targetRows.map((row) => row.slice());
+  const hasInlineSource = targetRows.some(
+    (row) => (row[svitrkodsIndex] ?? "").trim() || (row[summaIndex] ?? "").trim()
+  );
+  const sourcePairs = hasInlineSource
+    ? targetRows.map((row) => [row[svitrkodsIndex] ?? "", row[summaIndex] ?? ""])
+    : (preview.sourcePairs ?? []);
   const usedTargets = new Set<number>();
   const unmatchedSourceRows: string[][] = [];
-  const tempPairs = Array.from({ length: sourceRows.length }, () => ({
+  const tempPairs = Array.from({ length: targetRows.length }, () => ({
     svitrkods: "",
     summa: "",
   }));
 
-  sourceRows.forEach((row) => {
-    const svitrkods = row[svitrkodsIndex] ?? "";
-    const summa = row[summaIndex] ?? "";
+  sourcePairs.forEach(([sourceSvitrkods, sourceSumma]) => {
+    const svitrkods = sourceSvitrkods ?? "";
+    const summa = sourceSumma ?? "";
     const lastFour = getLastFourDigits(svitrkods);
     if (!lastFour) {
       if (!svitrkods.trim() && !summa.trim()) {
@@ -103,7 +109,7 @@ export const runLieliskaJob = (preview: ExcelPreviewData): LieliskaJobResult => 
       return;
     }
 
-    const matches = sourceRows
+    const matches = targetRows
       .map((targetRow, targetIndex) => ({
         targetIndex,
         veidlapas: targetRow[veidlapasIndex] ?? "",

@@ -11,6 +11,7 @@ export type ExcelPreviewData = {
   columnNumFmts: Array<string | undefined>;
   sourceRowCount: number;
   originalBuffer: ArrayBuffer;
+  sourcePairs?: string[][];
 };
 
 const formatDateByNumFmt = (date: Date, numFmt: string) => {
@@ -38,6 +39,18 @@ const formatCellValue = (cell: ExcelJS.Cell) => {
 const pickHeaderValue = (cell: ExcelJS.Cell, index: number) => {
   const text = formatCellValue(cell).trim();
   return text.length > 0 ? text : `Column ${index}`;
+};
+
+const normalizeHeader = (value: string) =>
+  value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "");
+
+const findHeaderIndex = (headers: string[], pattern: string) => {
+  const target = normalizeHeader(pattern);
+  return headers.findIndex((header) => normalizeHeader(header).includes(target));
 };
 
 const normalizeNumber = (value: string) => {
@@ -79,6 +92,32 @@ export const parseLieliskaWorkbook = async (
     );
   });
 
+  let sourcePairs: string[][] | undefined;
+  const sourceSheet = workbook.worksheets.find(
+    (sheet) => sheet.name.toLowerCase() === "lieliska"
+  );
+  if (sourceSheet) {
+    const sourceHeaderRow = sourceSheet.getRow(1);
+    const sourceHeaders = Array.from(
+      { length: sourceSheet.actualColumnCount ?? 0 },
+      (_, index) => pickHeaderValue(sourceHeaderRow.getCell(index + 1), index + 1)
+    );
+    const svIndex = findHeaderIndex(sourceHeaders, "svitrkods");
+    const sumIndex = findHeaderIndex(sourceHeaders, "summa");
+    if (svIndex >= 0 && sumIndex >= 0) {
+      sourcePairs = Array.from(
+        { length: Math.max((sourceSheet.actualRowCount ?? 0) - 1, 0) },
+        (_, rowIndex) => {
+          const row = sourceSheet.getRow(rowIndex + 2);
+          return [
+            formatCellValue(row.getCell(svIndex + 1)),
+            formatCellValue(row.getCell(sumIndex + 1)),
+          ];
+        }
+      ).filter(([sv, sum]) => sv.trim().length > 0 || sum.trim().length > 0);
+    }
+  }
+
   return {
     headers,
     rows,
@@ -92,6 +131,7 @@ export const parseLieliskaWorkbook = async (
     ),
     sourceRowCount: rows.length,
     originalBuffer: arrayBuffer.slice(0),
+    sourcePairs,
   };
 };
 
