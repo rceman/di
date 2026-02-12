@@ -14,10 +14,20 @@ const getGitValue = (command: string, fallback: string) => {
 
 const commitSha = getGitValue("git rev-parse --short HEAD", "dev");
 const commitDate = getGitValue("git log -1 --format=%cI", "");
+const versionTag = `v${commitSha}`;
 
 export default defineConfig({
   base: "/di/",
   plugins: [react()],
+  build: {
+    rollupOptions: {
+      output: {
+        entryFileNames: `assets/[name]-${versionTag}-[hash].js`,
+        chunkFileNames: `assets/[name]-${versionTag}-[hash].js`,
+        assetFileNames: `assets/[name]-${versionTag}-[hash][extname]`,
+      },
+    },
+  },
   define: {
     __APP_VERSION__: JSON.stringify(commitSha),
     __APP_COMMIT_DATE__: JSON.stringify(commitDate),
