@@ -12,6 +12,7 @@ export type ExcelPreviewData = {
   sourceRowCount: number;
   originalBuffer: ArrayBuffer;
   sourcePairs?: string[][];
+  autoAddedSvitrkodsColumn?: boolean;
 };
 
 const formatDateByNumFmt = (date: Date, numFmt: string) => {
@@ -62,6 +63,9 @@ const normalizeNumber = (value: string) => {
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : null;
 };
+
+// ExcelJS width units are character-based; 24.3 is approximately 175px.
+const AUTO_SVITRKODS_WIDTH = 24.3;
 
 export const parseLieliskaWorkbook = async (
   file: File
@@ -132,6 +136,7 @@ export const parseLieliskaWorkbook = async (
     sourceRowCount: rows.length,
     originalBuffer: arrayBuffer.slice(0),
     sourcePairs,
+    autoAddedSvitrkodsColumn: false,
   };
 };
 
@@ -201,6 +206,9 @@ export const downloadLieliskaXlsx = async (
       worksheet.getColumn(index + 1).width = width;
     }
   });
+  if (preview.autoAddedSvitrkodsColumn && headers.length >= 2) {
+    worksheet.getColumn(headers.length - 1).width = AUTO_SVITRKODS_WIDTH;
+  }
   preview.columnNumFmts.forEach((format, index) => {
     if (format) {
       worksheet.getColumn(index + 1).numFmt = format;

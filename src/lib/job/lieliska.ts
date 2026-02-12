@@ -1,4 +1,4 @@
-import type { ExcelPreviewData } from "../excel/lieliska";
+﻿import type { ExcelPreviewData } from "../excel/lieliska";
 
 export type LieliskaJobResult = {
   rows: string[][];
@@ -40,12 +40,17 @@ export const ensureLieliskaRunSchema = (
   if (veidlapasIndex === headers.length - 1) {
     const nextHeaders = [...headers, "Svītrkods", "Summa, €"];
     const nextRows = rows.map((row) => [...row, "", ""]);
+    const nextColumnWidths = [...preview.columnWidths, undefined, undefined];
+    const nextColumnNumFmts = [...preview.columnNumFmts, undefined, undefined];
     return {
       ...preview,
       headers: nextHeaders,
       rows: nextRows,
       colCount: nextHeaders.length,
+      columnWidths: nextColumnWidths,
+      columnNumFmts: nextColumnNumFmts,
       sourceRowCount: nextRows.length,
+      autoAddedSvitrkodsColumn: true,
     };
   }
 
@@ -169,3 +174,4 @@ export const runLieliskaJob = (preview: ExcelPreviewData): LieliskaJobResult => 
     sourceRowCount: trimmedRows.length,
   };
 };
+

@@ -15,6 +15,8 @@ const ROUTES = {
 } as const;
 
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/+$/, "");
+const APP_VERSION = __APP_VERSION__;
+const APP_COMMIT_DATE = __APP_COMMIT_DATE__;
 
 const withBase = (path: string) => {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
@@ -32,6 +34,10 @@ const withoutBase = (pathname: string) => {
 
 export default function App() {
   const [activePage, setActivePage] = useState<string>(PAGES.lieliska);
+  const versionText = `v${APP_VERSION}`;
+  const commitText = APP_COMMIT_DATE
+    ? new Date(APP_COMMIT_DATE).toLocaleString("lv-LV")
+    : "unknown date";
 
   useEffect(() => {
     const resolvePage = (pathname: string) => {
@@ -84,9 +90,12 @@ export default function App() {
           ))}
         </div>
 
-        <header id="app-header" className="flex flex-col gap-3">
+        <header id="app-header" className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">
             {activePage}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {versionText} | {commitText}
           </p>
         </header>
 

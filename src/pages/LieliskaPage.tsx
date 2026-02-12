@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "../components/ui/card";
 import { Input } from "../components/ui/input";
+import TablePreview from "../components/TablePreview";
 import {
   downloadLieliskaXlsx,
   parseLieliskaWorkbook,
@@ -38,6 +39,32 @@ export default function LieliskaPage() {
 
     return `${preview.sheetName} - ${preview.rowCount} rows - ${preview.colCount} columns`;
   }, [preview]);
+
+  const getPreviewCellClass = (rowIndex: number, cellIndex: number) => {
+    if (!preview || preview.headers.length < 3) {
+      return "";
+    }
+
+    const veidlapasIndex = preview.headers.length - 3;
+    const svitrkodsIndex = preview.headers.length - 2;
+    const summaIndex = preview.headers.length - 1;
+    const row = preview.rows[rowIndex] ?? [];
+    const veidlapas = (row[veidlapasIndex] ?? "").trim();
+    const svitrkods = (row[svitrkodsIndex] ?? "").trim();
+    const summa = (row[summaIndex] ?? "").trim();
+
+    const isRedRow = Boolean(veidlapas) && !svitrkods && !summa;
+    if (isRedRow && (cellIndex === veidlapasIndex || cellIndex === svitrkodsIndex || cellIndex === summaIndex)) {
+      return "bg-red-100 text-red-900 font-semibold";
+    }
+
+    const isYellowRow = !veidlapas && (svitrkods.length > 0 || summa.length > 0);
+    if (isYellowRow && (cellIndex === svitrkodsIndex || cellIndex === summaIndex)) {
+      return "bg-yellow-100 text-yellow-900 font-semibold";
+    }
+
+    return "";
+  };
 
   const handleRunJob = () => {
     if (!preview) {
@@ -188,55 +215,22 @@ export default function LieliskaPage() {
             </div>
           </div>
           {loading ? (
-            <div className="rounded-lg border border-border bg-background/70 p-6 text-sm text-muted-foreground">
-              Parsing workbook...
-            </div>
-          ) : preview && preview.headers.length > 0 ? (
-            <div className="max-h-[360px] overflow-auto rounded-lg border border-border bg-background/70">
-              <table className="w-full border-collapse text-left text-sm">
-                <thead className="sticky top-0 bg-background">
-                  <tr>
-                    {preview.headers.map((header, index) => (
-                      <th
-                        key={`header-${index}`}
-                        className="border-b border-border px-3 py-2 font-semibold text-foreground"
-                      >
-                        {header}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {preview.rows.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan={preview.headers.length}
-                        className="px-3 py-6 text-center text-muted-foreground"
-                      >
-                        Worksheet is empty after the header row.
-                      </td>
-                    </tr>
-                  ) : (
-                    preview.rows.map((row, rowIndex) => (
-                      <tr key={`row-${rowIndex}`} className="odd:bg-muted/40">
-                        {row.map((cell, cellIndex) => (
-                          <td
-                            key={`cell-${rowIndex}-${cellIndex}`}
-                            className="border-b border-border px-3 py-2 text-muted-foreground"
-                          >
-                            {cell}
-                          </td>
-                        ))}
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <TablePreview
+              headers={[]}
+              rows={[]}
+              loading={true}
+              loadingMessage="Parsing workbook..."
+              emptyMessage="Upload .xlsx to preview."
+            />
           ) : (
-            <div className="rounded-lg border border-dashed border-border bg-background/60 p-6 text-sm text-muted-foreground">
-              Upload .xlsx to preview.
-            </div>
+            <TablePreview
+              headers={preview?.headers ?? []}
+              rows={preview?.rows ?? []}
+              loading={false}
+              loadingMessage="Parsing workbook..."
+              emptyMessage="Upload .xlsx to preview."
+              getCellClassName={getPreviewCellClass}
+            />
           )}
         </CardContent>
         <CardFooter id="table-card-footer" className="justify-between gap-3">

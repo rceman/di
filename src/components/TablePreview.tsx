@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { CSSProperties } from "react";
 
 type TablePreviewProps = {
   headers: string[];
@@ -7,6 +8,7 @@ type TablePreviewProps = {
   loadingMessage: string;
   emptyMessage: string;
   getCellClassName?: (rowIndex: number, cellIndex: number) => string;
+  getColumnStyle?: (cellIndex: number) => CSSProperties | undefined;
   renderCell?: (
     rowIndex: number,
     cellIndex: number,
@@ -23,6 +25,7 @@ export default function TablePreview({
   loadingMessage,
   emptyMessage,
   getCellClassName,
+  getColumnStyle,
   renderCell,
 }: TablePreviewProps) {
   if (loading) {
@@ -50,6 +53,7 @@ export default function TablePreview({
               <th
                 key={`preview-header-${index}`}
                 className="border-b border-border px-3 py-2 font-semibold text-foreground"
+                style={getColumnStyle?.(index)}
               >
                 {header}
               </th>
@@ -73,6 +77,7 @@ export default function TablePreview({
                   <td
                     key={`preview-cell-${rowIndex}-${cellIndex}`}
                     className={`border-b border-border px-3 py-2 text-muted-foreground ${getCellClassName?.(rowIndex, cellIndex) ?? ""}`}
+                    style={getColumnStyle?.(cellIndex)}
                   >
                     {renderCell
                       ? renderCell(rowIndex, cellIndex, cell, headers, row)

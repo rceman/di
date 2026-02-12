@@ -4,6 +4,7 @@ Read this file first when working in the repo. It is the source of truth for whe
 
 ### Root
 - `src/App.tsx`: App shell, routes, page tabs, page switching.
+- `src/app-meta.d.ts`: Build-time global type declarations for app version and commit date.
 - `src/pages/LieliskaPage.tsx`: Lieliska DK page UI and state orchestration.
 - `src/pages/DavanuPage.tsx`: Davanu serviss page UI and state orchestration.
 ### CI/CD
