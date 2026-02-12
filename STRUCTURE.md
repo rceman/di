@@ -39,6 +39,7 @@ Read this file first when working in the repo. It is the source of truth for whe
 - `tests/davanu_columns.test.js`: Unit tests for Davanu PDF column detection.
 - `tests/davanu_job.test.js`: Unit tests for Davanu run job matching logic.
 - `tests/davanu_parser.test.js`: Unit tests for PDF header detection edge cases.
+- `tests/lieliska_job.test.js`: Unit tests for Lieliska run job matching and duplicate handling.
 
 ### Notes
 - Do not place parsing/transform logic in `src/App.tsx`.

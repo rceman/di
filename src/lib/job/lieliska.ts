@@ -7,12 +7,77 @@ export type LieliskaJobResult = {
   sourceRowCount: number;
 };
 
+const normalizeHeader = (value: string) =>
+  value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "");
+
+const isVeidlapasHeader = (value: string) => normalizeHeader(value).includes("veidlapas");
+
+const isSvitrkodsHeader = (value: string) => {
+  const header = normalizeHeader(value);
+  return header.includes("svitrkods") || header.includes("rezervacijaskods");
+};
+
+const isSummaHeader = (value: string) => {
+  const header = normalizeHeader(value);
+  return header.includes("summa") || header.includes("pardosanascena");
+};
+
+export const ensureLieliskaRunSchema = (
+  preview: ExcelPreviewData
+): ExcelPreviewData => {
+  const headers = preview.headers.slice();
+  const rows = preview.rows.map((row) => row.slice());
+  const veidlapasIndex = headers.findIndex((header) => isVeidlapasHeader(header));
+  if (veidlapasIndex < 0) {
+    throw new Error("Expected Veidlapas Nr. column.");
+  }
+
+  // Compatibility mode for files that end with Veidlapas Nr. and miss tail columns.
+  if (veidlapasIndex === headers.length - 1) {
+    const nextHeaders = [...headers, "Svitrkods", "Summa"];
+    const nextRows = rows.map((row) => [...row, "", ""]);
+    return {
+      ...preview,
+      headers: nextHeaders,
+      rows: nextRows,
+      colCount: nextHeaders.length,
+      sourceRowCount: nextRows.length,
+    };
+  }
+
+  return preview;
+};
+
+const validateExpectedColumns = (headers: string[]) => {
+  if (headers.length < 3) {
+    throw new Error("Need at least 3 columns to run this job.");
+  }
+  const veidlapasHeader = normalizeHeader(headers[headers.length - 3] ?? "");
+  const svitrkodsHeader = normalizeHeader(headers[headers.length - 2] ?? "");
+  const summaHeader = normalizeHeader(headers[headers.length - 1] ?? "");
+
+  if (!veidlapasHeader.includes("veidlapas")) {
+    throw new Error("Expected Veidlapas Nr. as column -3.");
+  }
+  if (!isSvitrkodsHeader(svitrkodsHeader)) {
+    throw new Error("Expected Svitrkods as column -2.");
+  }
+  if (!isSummaHeader(summaHeader)) {
+    throw new Error("Expected Summa as column -1.");
+  }
+};
+
 const getLastFourDigits = (value: string) => {
   const digits = value.replace(/\D/g, "");
   return digits.slice(-4);
 };
 
 export const runLieliskaJob = (preview: ExcelPreviewData): LieliskaJobResult => {
+  validateExpectedColumns(preview.headers);
   const columnCount = preview.headers.length;
   const veidlapasIndex = columnCount - 3;
   const svitrkodsIndex = columnCount - 2;
@@ -31,6 +96,9 @@ export const runLieliskaJob = (preview: ExcelPreviewData): LieliskaJobResult => 
     const summa = row[summaIndex] ?? "";
     const lastFour = getLastFourDigits(svitrkods);
     if (!lastFour) {
+      if (!svitrkods.trim() && !summa.trim()) {
+        return;
+      }
       unmatchedSourceRows.push([svitrkods, summa]);
       return;
     }

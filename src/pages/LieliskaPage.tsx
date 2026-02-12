@@ -16,7 +16,7 @@ import {
   parseLieliskaWorkbook,
   type ExcelPreviewData,
 } from "../lib/excel/lieliska";
-import { runLieliskaJob } from "../lib/job/lieliska";
+import { ensureLieliskaRunSchema, runLieliskaJob } from "../lib/job/lieliska";
 
 const RUN_JOB_LABEL = "Run Job";
 const DOWNLOAD_LABEL = "Download Table";
@@ -50,12 +50,21 @@ export default function LieliskaPage() {
       return;
     }
 
-    const result = runLieliskaJob(preview);
-    setPreview({
-      ...preview,
-      rows: result.rows,
-      sourceRowCount: result.sourceRowCount,
-    });
+    let result;
+    try {
+      const normalizedPreview = ensureLieliskaRunSchema(preview);
+      result = runLieliskaJob(normalizedPreview);
+      setPreview({
+        ...normalizedPreview,
+        rows: result.rows,
+        sourceRowCount: result.sourceRowCount,
+      });
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Run Job failed for this file.";
+      alert(message);
+      return;
+    }
     setUnmatchedRows(result.unmatchedRows);
     setUnmatchedSvitrkods(result.unmatchedSvitrkods);
     setHasRunJob(true);
