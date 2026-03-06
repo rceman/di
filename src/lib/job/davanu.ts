@@ -1,6 +1,11 @@
 import type { DavanuExcelPreview } from "../excel/davanu";
 import type { PdfPreview } from "../pdf/davanu";
 import {
+  getDavanuExcelDateIndex,
+  getDavanuExcelDocumentSumIndex,
+  getDavanuExcelReservationIndex,
+  getDavanuExcelSaleSumIndex,
+  getDavanuExcelVeidlapasIndex,
   getDavanuPdfCodeIndex,
   getDavanuPdfDateIndex,
   getDavanuPdfSumIndex,
@@ -53,21 +58,60 @@ const normalizeExcelDate = (value: string) => {
   return `${match[3]}-${match[2]}-${match[1]}`;
 };
 
+const ensureDavanuRunSchema = (excel: DavanuExcelPreview): DavanuExcelPreview => {
+  const veidlapasIndex = getDavanuExcelVeidlapasIndex(excel.headers);
+  const reservationIndex = getDavanuExcelReservationIndex(excel.headers);
+  const saleSumIndex = getDavanuExcelSaleSumIndex(excel.headers);
+
+  if (reservationIndex >= 0 && saleSumIndex >= 0) {
+    return excel;
+  }
+
+  const nextHeaders = excel.headers.slice();
+  const nextRows = excel.rows.map((row) => row.slice());
+  const nextWidths = excel.columnWidths.slice();
+  const nextNumFmts = excel.columnNumFmts.slice();
+
+  if (reservationIndex < 0 && veidlapasIndex === nextHeaders.length - 1) {
+    nextHeaders.push("Rezervacijas kods");
+    nextWidths.push(undefined);
+    nextNumFmts.push(undefined);
+    nextRows.forEach((row) => row.push(""));
+  }
+
+  if (getDavanuExcelSaleSumIndex(nextHeaders) < 0) {
+    nextHeaders.push("Pardosanas cena");
+    nextWidths.push(undefined);
+    nextNumFmts.push("0.00");
+    nextRows.forEach((row) => row.push(""));
+  }
+
+  return {
+    ...excel,
+    headers: nextHeaders,
+    rows: nextRows,
+    colCount: nextHeaders.length,
+    columnWidths: nextWidths,
+    columnNumFmts: nextNumFmts,
+  };
+};
+
 export const runDavanuJob = ({ excel, pdf }: DavanuJobInput): DavanuJobResult => {
+  const preparedExcel = ensureDavanuRunSchema(excel);
   const warnings: string[] = [];
   const matches: Array<{ pdfRowIndex: number; excelRowIndex: number }> = [];
   const unmatchedPdfRows: string[][] = [];
 
-  const excelCodeIndex = excel.headers.length - 3;
-  const excelSumIndex = 5;
-  const excelSvitrkodsIndex = excel.headers.length - 2;
-  const excelSummaIndex = excel.headers.length - 1;
+  const excelCodeIndex = getDavanuExcelVeidlapasIndex(preparedExcel.headers);
+  const excelSumIndex = getDavanuExcelDocumentSumIndex(preparedExcel.headers);
+  const excelSvitrkodsIndex = getDavanuExcelReservationIndex(preparedExcel.headers);
+  const excelSummaIndex = getDavanuExcelSaleSumIndex(preparedExcel.headers);
   const pdfCodeIndex = getDavanuPdfCodeIndex(pdf.headers);
   const pdfSumIndex = getDavanuPdfSumIndex(pdf.headers);
   const pdfDateIndex = getDavanuPdfDateIndex(pdf.headers);
-  const excelDateIndex = 2;
+  const excelDateIndex = getDavanuExcelDateIndex(preparedExcel.headers);
 
-  const excelRows = excel.rows.map((row, index) => ({
+  const excelRows = preparedExcel.rows.map((row, index) => ({
     index,
     code: normalizeCode(row[excelCodeIndex] ?? ""),
     sum: normalizeNumber(row[excelSumIndex] ?? ""),
@@ -90,7 +134,7 @@ export const runDavanuJob = ({ excel, pdf }: DavanuJobInput): DavanuJobResult =>
   });
 
   const usedPdfRows = new Set<number>();
-  const nextRows = excel.rows.map((row) => row.slice());
+  const nextRows = preparedExcel.rows.map((row) => row.slice());
   const dateSumMatchRows: number[] = [];
 
   excelRows.forEach((excelRow) => {
@@ -129,7 +173,7 @@ export const runDavanuJob = ({ excel, pdf }: DavanuJobInput): DavanuJobResult =>
   excelRows.forEach((excelRow) => {
     if (nextRows[excelRow.index]?.[excelSvitrkodsIndex]) return;
     const excelDate = normalizeExcelDate(
-      excel.rows[excelRow.index]?.[excelDateIndex] ?? ""
+      preparedExcel.rows[excelRow.index]?.[excelDateIndex] ?? ""
     );
     if (!excelDate) return;
     if (excelRow.sum === null) return;
@@ -157,14 +201,14 @@ export const runDavanuJob = ({ excel, pdf }: DavanuJobInput): DavanuJobResult =>
   });
 
   const appended = unmatchedPdfRows.map((row) => {
-    const padded = Array.from({ length: excel.headers.length }, () => "");
+    const padded = Array.from({ length: preparedExcel.headers.length }, () => "");
     padded[excelSvitrkodsIndex] = row[pdfCodeIndex] ?? "";
     padded[excelSummaIndex] = formatNumberValue(row[pdfSumIndex] ?? "");
     return padded;
   });
 
   const nextExcel: DavanuExcelPreview = {
-    ...excel,
+    ...preparedExcel,
     rows: nextRows.concat(appended),
     rowCount: nextRows.length + appended.length + 1,
     dateSumMatchRows,

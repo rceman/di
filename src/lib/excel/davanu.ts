@@ -1,5 +1,11 @@
 import ExcelJS from "exceljs";
 import type { PdfPreview } from "../pdf/davanu";
+import {
+  getDavanuExcelDocumentSumIndex,
+  getDavanuExcelReservationIndex,
+  getDavanuExcelSaleSumIndex,
+  getDavanuExcelVeidlapasIndex,
+} from "../job/davanu_columns";
 
 export type DavanuExcelPreview = {
   headers: string[];
@@ -115,7 +121,7 @@ export const parseDavanuExcel = async (
 
   return {
     headers,
-    rows: applyDavanuNumberColumnPreview(rows, 5),
+    rows: applyDavanuNumberColumnPreview(rows, getDavanuExcelDocumentSumIndex(headers)),
     rowCount,
     colCount,
     sheetName: worksheet.name,
@@ -185,18 +191,17 @@ export const downloadDavanuCombinedXlsx = async (
       firstSheet.getColumn(index + 1).numFmt = format;
     }
   });
-  applyDavanuNumberColumnExport(firstSheet, excel.rows, 5);
   applyDavanuNumberColumnExport(
     firstSheet,
     excel.rows,
-    Math.max(excel.headers.length - 1, 0)
+    getDavanuExcelDocumentSumIndex(excel.headers)
   );
+  applyDavanuNumberColumnExport(firstSheet, excel.rows, getDavanuExcelSaleSumIndex(excel.headers));
 
-  const columnCount = excel.headers.length;
-  if (columnCount >= 3) {
-    const veidlapasIndex = columnCount - 3;
-    const svitrkodsIndex = columnCount - 2;
-    const summaIndex = columnCount - 1;
+  const veidlapasIndex = getDavanuExcelVeidlapasIndex(excel.headers);
+  const svitrkodsIndex = getDavanuExcelReservationIndex(excel.headers);
+  const summaIndex = getDavanuExcelSaleSumIndex(excel.headers);
+  if (veidlapasIndex >= 0 && svitrkodsIndex >= 0 && summaIndex >= 0) {
     const redFill = {
       type: "pattern",
       pattern: "solid",

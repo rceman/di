@@ -2,6 +2,10 @@ import type { DavanuExcelPreview } from "../excel/davanu";
 import type { PdfPreview } from "../pdf/davanu";
 import type { DavanuJobResult } from "./davanu";
 import {
+  getDavanuExcelDateIndex,
+  getDavanuExcelReservationIndex,
+  getDavanuExcelSaleSumIndex,
+  getDavanuExcelVeidlapasIndex,
   getDavanuPdfCodeIndex,
   getDavanuPdfDateIndex,
   getDavanuPdfSumIndex,
@@ -15,14 +19,21 @@ export type TableSlice = {
 export const getUnmatchedVeidlapas = (
   excel: DavanuExcelPreview | null
 ): TableSlice => {
-  if (!excel || excel.headers.length < 3) {
+  if (!excel) {
     return { headers: [], rows: [] };
   }
-  const veidlapasIndex = excel.headers.length - 3;
-  const svitrkodsIndex = excel.headers.length - 2;
+  const veidlapasIndex = getDavanuExcelVeidlapasIndex(excel.headers);
+  const svitrkodsIndex = getDavanuExcelReservationIndex(excel.headers);
+  if (veidlapasIndex < 0) {
+    return { headers: [], rows: [] };
+  }
   const headers = excel.headers.slice(0, veidlapasIndex + 1);
   const rows = excel.rows
-    .filter((row) => (row[veidlapasIndex] ?? "") && !(row[svitrkodsIndex] ?? ""))
+    .filter((row) => {
+      const veidlapasValue = row[veidlapasIndex] ?? "";
+      const reservationValue = svitrkodsIndex >= 0 ? row[svitrkodsIndex] ?? "" : "";
+      return Boolean(veidlapasValue) && !reservationValue;
+    })
     .map((row) => row.slice(0, veidlapasIndex + 1));
   return { headers, rows };
 };
@@ -52,13 +63,16 @@ export const getApproxRezervacijas = (
   jobResult: DavanuJobResult | null
 ): TableSlice => {
   const preview = jobResult?.excel ?? excel;
-  if (!preview || preview.headers.length < 3) {
+  if (!preview) {
     return { headers: [], rows: [] };
   }
-  const veidlapasIndex = preview.headers.length - 3;
-  const svitrkodsIndex = preview.headers.length - 2;
-  const summaIndex = preview.headers.length - 1;
-  const excelDateIndex = 2;
+  const veidlapasIndex = getDavanuExcelVeidlapasIndex(preview.headers);
+  const svitrkodsIndex = getDavanuExcelReservationIndex(preview.headers);
+  const summaIndex = getDavanuExcelSaleSumIndex(preview.headers);
+  const excelDateIndex = getDavanuExcelDateIndex(preview.headers);
+  if (veidlapasIndex < 0 || svitrkodsIndex < 0 || summaIndex < 0) {
+    return { headers: [], rows: [] };
+  }
   const pdfCodeIndex = getDavanuPdfCodeIndex(jobResult?.pdf?.headers ?? []);
   const pdfDateIndex = getDavanuPdfDateIndex(jobResult?.pdf?.headers ?? []);
   const headers = [
@@ -89,10 +103,13 @@ export const getExcelCellClass = (
   rowIndex: number,
   cellIndex: number
 ) => {
-  if (!preview || preview.headers.length < 3) return "";
-  const veidlapasIndex = preview.headers.length - 3;
-  const svitrkodsIndex = preview.headers.length - 2;
-  const summaIndex = preview.headers.length - 1;
+  if (!preview) return "";
+  const veidlapasIndex = getDavanuExcelVeidlapasIndex(preview.headers);
+  const svitrkodsIndex = getDavanuExcelReservationIndex(preview.headers);
+  const summaIndex = getDavanuExcelSaleSumIndex(preview.headers);
+  if (veidlapasIndex < 0 || svitrkodsIndex < 0 || summaIndex < 0) {
+    return "";
+  }
   if (![veidlapasIndex, svitrkodsIndex, summaIndex].includes(cellIndex)) {
     return "";
   }

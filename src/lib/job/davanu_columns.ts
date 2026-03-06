@@ -31,6 +31,24 @@ const findColumnIndex = (
   return fallback;
 };
 
+const findOptionalColumnIndex = (headers: string[], candidates: string[]) =>
+  findColumnIndex(headers, candidates, -1);
+
+export const getDavanuExcelVeidlapasIndex = (headers: string[]) =>
+  findColumnIndex(headers, ["Veidlapas Nr.", "Veidlapas Nr", "Veidlapas"], headers.length - 1);
+
+export const getDavanuExcelReservationIndex = (headers: string[]) =>
+  findOptionalColumnIndex(headers, ["Rezervacijas kods", "Rezervacijas"]);
+
+export const getDavanuExcelSaleSumIndex = (headers: string[]) =>
+  findOptionalColumnIndex(headers, ["Pardosanas cena", "Cena"]);
+
+export const getDavanuExcelDocumentSumIndex = (headers: string[]) =>
+  findColumnIndex(headers, ["Dokumenta summa", "Summa"], 5);
+
+export const getDavanuExcelDateIndex = (headers: string[]) =>
+  findColumnIndex(headers, ["Dok. datums", "Datums"], 2);
+
 export const getDavanuPdfCodeIndex = (headers: string[]) =>
   findColumnIndex(headers, ["Rezervacijas kods", "Rezervacijas"], 1);
 
