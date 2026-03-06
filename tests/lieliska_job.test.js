@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
+import ExcelJS from "exceljs";
 
 import {
   ensureLieliskaRunSchema,
   runLieliskaJob,
 } from "../src/lib/job/lieliska.ts";
+import { parseLieliskaWorkbook } from "../src/lib/excel/lieliska.ts";
 
 const headers = [
   "DokT.Nosaukums",
@@ -124,5 +126,31 @@ describe("runLieliskaJob", () => {
     expect(result.rows[1][12]).toBe("000000000000006818");
     expect(result.rows[1][13]).toBe("100");
     expect(result.unmatchedSvitrkods).toEqual([]);
+  });
+
+  it("reads source pairs from the real 022026 workbook even when source sheet is not named Lieliska", async () => {
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile("Lieliska DK 022026-1.xlsx");
+    const firstSheet = workbook.worksheets[0];
+    const secondSheet = workbook.worksheets[1];
+
+    expect(firstSheet?.name).toBe("Sheet1");
+    expect(secondSheet?.name).toBe("Sheet2");
+
+    const preview = await parseLieliskaWorkbook({
+      name: "Lieliska DK 022026-1.xlsx",
+      arrayBuffer: async () => {
+        const buffer = await workbook.xlsx.writeBuffer();
+        return buffer instanceof ArrayBuffer ? buffer : buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+      },
+    });
+
+    expect(preview.sourcePairs?.length).toBeGreaterThan(0);
+
+    const result = runLieliskaJob(preview);
+    expect(result.rows[0][12]).toBe("000000000000002265");
+    expect(result.rows[0][13]).toBe("50");
+    expect(result.rows[1][12]).toBe("000000000000000178");
+    expect(result.rows[1][13]).toBe("47.2");
   });
 });

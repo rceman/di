@@ -54,6 +54,21 @@ const findHeaderIndex = (headers: string[], pattern: string) => {
   return headers.findIndex((header) => normalizeHeader(header).includes(target));
 };
 
+const getWorksheetHeaders = (worksheet: ExcelJS.Worksheet) => {
+  const headerRow = worksheet.getRow(1);
+  return Array.from({ length: worksheet.actualColumnCount ?? 0 }, (_, index) =>
+    pickHeaderValue(headerRow.getCell(index + 1), index + 1)
+  );
+};
+
+const isLieliskaSourceSheet = (worksheet: ExcelJS.Worksheet) => {
+  const headers = getWorksheetHeaders(worksheet);
+  return (
+    findHeaderIndex(headers, "svitrkods") >= 0 &&
+    findHeaderIndex(headers, "summa") >= 0
+  );
+};
+
 const normalizeNumber = (value: string) => {
   const trimmed = value.trim();
   if (!trimmed) {
@@ -84,10 +99,7 @@ export const parseLieliskaWorkbook = async (
   const maxCols = colCount || 0;
   const maxRows = rowCount || 0;
 
-  const headerRow = worksheet.getRow(1);
-  const headers = Array.from({ length: maxCols }, (_, index) =>
-    pickHeaderValue(headerRow.getCell(index + 1), index + 1)
-  );
+  const headers = getWorksheetHeaders(worksheet);
 
   const rows = Array.from({ length: Math.max(maxRows - 1, 0) }, (_, rowIndex) => {
     const row = worksheet.getRow(rowIndex + 2);
@@ -97,15 +109,11 @@ export const parseLieliskaWorkbook = async (
   });
 
   let sourcePairs: string[][] | undefined;
-  const sourceSheet = workbook.worksheets.find(
-    (sheet) => sheet.name.toLowerCase() === "lieliska"
-  );
+  const sourceSheet =
+    workbook.worksheets.find((sheet) => sheet !== worksheet && isLieliskaSourceSheet(sheet)) ??
+    workbook.worksheets.find((sheet) => sheet.name.toLowerCase() === "lieliska");
   if (sourceSheet) {
-    const sourceHeaderRow = sourceSheet.getRow(1);
-    const sourceHeaders = Array.from(
-      { length: sourceSheet.actualColumnCount ?? 0 },
-      (_, index) => pickHeaderValue(sourceHeaderRow.getCell(index + 1), index + 1)
-    );
+    const sourceHeaders = getWorksheetHeaders(sourceSheet);
     const svIndex = findHeaderIndex(sourceHeaders, "svitrkods");
     const sumIndex = findHeaderIndex(sourceHeaders, "summa");
     if (svIndex >= 0 && sumIndex >= 0) {
