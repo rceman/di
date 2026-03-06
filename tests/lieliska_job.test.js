@@ -153,4 +153,35 @@ describe("runLieliskaJob", () => {
     expect(result.rows[1][12]).toBe("000000000000000178");
     expect(result.rows[1][13]).toBe("47.2");
   });
+
+  it("fills Svitrkods and Summa for the original 022026 workbook that ends with Veidlapas Nr.", async () => {
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile("Lieliska DK 022026.xlsx");
+
+    const preview = await parseLieliskaWorkbook({
+      name: "Lieliska DK 022026.xlsx",
+      arrayBuffer: async () => {
+        const buffer = await workbook.xlsx.writeBuffer();
+        return buffer instanceof ArrayBuffer
+          ? buffer
+          : buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+      },
+    });
+
+    const normalized = ensureLieliskaRunSchema(preview);
+    expect(normalized.headers[12]).toBe("Svītrkods");
+    expect(normalized.headers[13]).toBe("Summa, €");
+
+    const result = runLieliskaJob(normalized);
+
+    expect(result.rows[0][11]).toBe("981998909434442265");
+    expect(result.rows[0][12]).toBe("000000000000002265");
+    expect(result.rows[0][13]).toBe("50");
+    expect(result.rows[1][12]).toBe("000000000000000178");
+    expect(result.rows[1][13]).toBe("47.2");
+    expect(result.unmatchedSvitrkods).toEqual([
+      ["000000000000005121", "30"],
+      ["000000000000006304", "50"],
+    ]);
+  });
 });
