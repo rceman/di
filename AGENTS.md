@@ -203,6 +203,8 @@ If no tests exist, do not introduce a new framework unless the task explicitly d
 6) Run the repo scripts (as available):
     - `npm run build` (TypeScript + Vite build)
     - `npm run dev` (manual smoke check, if needed)
+    - after pushing a deploy-related change, run `npm run check:live-version` to verify that the live GitHub Pages site serves the expected commit
+    - for deploy verification, always use `npm run check:live-version` first; only fall back to manual network checks if the script itself fails
 7) For large files, prefer targeted reads:
     - Use `rg` and open only relevant sections.
     - Check token count before loading the whole file.
@@ -210,6 +212,7 @@ If no tests exist, do not introduce a new framework unless the task explicitly d
 
 ## Validation shortcuts (fast)
 - SPA: `npm run build`
+- Deploy verification: `npm run check:live-version`
 
 ## Formatting guidance
 This repo does not currently define a formatter or lint script. Keep formatting consistent with surrounding code for the files you touch. Do not introduce a new formatter unless a task explicitly asks for it.
