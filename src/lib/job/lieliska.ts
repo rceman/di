@@ -81,6 +81,66 @@ const getLastFourDigits = (value: string) => {
   return digits.slice(-4);
 };
 
+const normalizeNumber = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const normalized = trimmed.replace(/\s/g, "").replace(",", ".");
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+
+const toCents = (value: string) => {
+  const parsed = normalizeNumber(value);
+  return parsed === null ? null : Math.round(parsed * 100);
+};
+
+const findSplitMatches = (
+  matches: Array<{
+    targetIndex: number;
+    veidlapas: string;
+    dokumentaSumma: string;
+    dokumentaSummaCents: number | null;
+  }>,
+  targetCents: number
+) => {
+  const available = matches.filter((match) => match.dokumentaSummaCents !== null);
+
+  const search = (
+    startIndex: number,
+    current: typeof available,
+    currentSum: number
+  ): typeof available | null => {
+    if (current.length > 1 && currentSum === targetCents) {
+      return current;
+    }
+    if (currentSum >= targetCents) {
+      return null;
+    }
+
+    for (let index = startIndex; index < available.length; index += 1) {
+      const candidate = available[index];
+      const candidateSum = candidate.dokumentaSummaCents;
+      if (candidateSum === null) {
+        continue;
+      }
+      const result = search(
+        index + 1,
+        current.concat(candidate),
+        currentSum + candidateSum
+      );
+      if (result) {
+        return result;
+      }
+    }
+
+    return null;
+  };
+
+  return search(0, [], 0);
+};
+
 export const runLieliskaJob = (preview: ExcelPreviewData): LieliskaJobResult => {
   validateExpectedColumns(preview.headers);
   const columnCount = preview.headers.length;
@@ -119,6 +179,7 @@ export const runLieliskaJob = (preview: ExcelPreviewData): LieliskaJobResult => 
         targetIndex,
         veidlapas: targetRow[veidlapasIndex] ?? "",
         dokumentaSumma: targetRow[5] ?? "",
+        dokumentaSummaCents: toCents(targetRow[5] ?? ""),
       }))
       .filter(({ veidlapas }) => getLastFourDigits(veidlapas).endsWith(lastFour));
 
@@ -128,20 +189,44 @@ export const runLieliskaJob = (preview: ExcelPreviewData): LieliskaJobResult => 
     }
 
     const hasSumColumn = columnCount > 5;
+    const sourceSumCents = toCents(summa);
     const sumMatches = hasSumColumn
       ? matches.filter((match) => match.dokumentaSumma === summa)
       : [];
     const availableSumMatch = sumMatches.find(
       (match) => !usedTargets.has(match.targetIndex)
     );
-    const available = matches.find((match) => !usedTargets.has(match.targetIndex));
-    const chosen = availableSumMatch ?? available;
-    if (!chosen) {
+    if (availableSumMatch) {
+      usedTargets.add(availableSumMatch.targetIndex);
+      tempPairs[availableSumMatch.targetIndex] = { svitrkods, summa };
+      return;
+    }
+
+    const availableMatches = matches.filter((match) => !usedTargets.has(match.targetIndex));
+    const splitMatches =
+      sourceSumCents === null
+        ? null
+        : findSplitMatches(availableMatches, sourceSumCents);
+
+    if (splitMatches) {
+      splitMatches.forEach((match) => {
+        usedTargets.add(match.targetIndex);
+        tempPairs[match.targetIndex] = {
+          svitrkods,
+          summa: match.dokumentaSumma,
+        };
+      });
+      return;
+    }
+
+    const available = availableMatches[0];
+    if (!available) {
       unmatchedSourceRows.push([svitrkods, summa]);
       return;
     }
-    usedTargets.add(chosen.targetIndex);
-    tempPairs[chosen.targetIndex] = { svitrkods, summa };
+
+    usedTargets.add(available.targetIndex);
+    tempPairs[available.targetIndex] = { svitrkods, summa };
   });
 
   const mergedRows = baseRows.map((row, index) => {

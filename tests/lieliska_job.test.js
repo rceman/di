@@ -74,6 +74,22 @@ describe("runLieliskaJob", () => {
     expect(appendedRows[0][13]).toBe("57,75");
   });
 
+  it("splits one Svitrkods across multiple target rows when their sums add up", () => {
+    const preview = createPreview([
+      ["A", "GIV048804", "25.02.2026.", "D", "X", "14.4", "EUR", "G", "R1", "50", "Given", "981743954883729259", "", ""],
+      ["A", "GIV048813", "25.02.2026.", "D", "X", "30.8", "EUR", "G", "R1", "50", "Given", "981743954883729259", "", ""],
+    ]);
+    preview.sourcePairs = [["000000000000009259", "45.2"]];
+
+    const result = runLieliskaJob(preview);
+
+    expect(result.rows[0][12]).toBe("000000000000009259");
+    expect(result.rows[0][13]).toBe("14.4");
+    expect(result.rows[1][12]).toBe("000000000000009259");
+    expect(result.rows[1][13]).toBe("30.8");
+    expect(result.unmatchedSvitrkods).toEqual([]);
+  });
+
   it("adds Svitrkods and Summa columns when file ends with Veidlapas Nr.", () => {
     const wrongHeaders = headers.slice(0, 12);
     const baseRows = [["A", "1", "01.01.2026.", "D", "X", "30", "EUR", "G", "R1", "50", "Given", "9815"]];
@@ -183,5 +199,29 @@ describe("runLieliskaJob", () => {
       ["000000000000005121", "30"],
       ["000000000000006304", "50"],
     ]);
+  });
+
+  it("splits 000000000000009259 across GIV048804 and GIV048813 in the original workbook", async () => {
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile("Lieliska DK 022026.xlsx");
+
+    const preview = await parseLieliskaWorkbook({
+      name: "Lieliska DK 022026.xlsx",
+      arrayBuffer: async () => {
+        const buffer = await workbook.xlsx.writeBuffer();
+        return buffer instanceof ArrayBuffer
+          ? buffer
+          : buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+      },
+    });
+
+    const normalized = ensureLieliskaRunSchema(preview);
+    const result = runLieliskaJob(normalized);
+    const rowByNumurs = new Map(result.rows.map((row) => [row[1], row]));
+
+    expect(rowByNumurs.get("GIV048804")?.[12]).toBe("000000000000009259");
+    expect(rowByNumurs.get("GIV048804")?.[13]).toBe("14.4");
+    expect(rowByNumurs.get("GIV048813")?.[12]).toBe("000000000000009259");
+    expect(rowByNumurs.get("GIV048813")?.[13]).toBe("30.8");
   });
 });
