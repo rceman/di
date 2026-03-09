@@ -7,6 +7,13 @@ export type LieliskaJobResult = {
   sourceRowCount: number;
 };
 
+type LieliskaSourceEntry = {
+  svitrkods: string;
+  summa: string;
+  datums?: string;
+  tirdzniecibasVieta?: string;
+};
+
 const normalizeHeader = (value: string) =>
   value
     .toLowerCase()
@@ -81,6 +88,48 @@ const getLastFourDigits = (value: string) => {
   return digits.slice(-4);
 };
 
+const getFirstWordToken = (value: string) => {
+  const normalized = value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9 ]+/g, " ")
+    .trim();
+  return normalized.split(/\s+/)[0] ?? "";
+};
+
+const normalizeTargetDate = (value: string) => {
+  const match = value.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+  if (!match) {
+    return null;
+  }
+  return `${match[3]}-${match[2]}-${match[1]}`;
+};
+
+const normalizeSourceDate = (value: string) => {
+  const match = value.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) {
+    return null;
+  }
+  return `${match[1]}-${match[2]}-${match[3]}`;
+};
+
+const getTargetVenueIndex = (headers: string[]) => {
+  const fallbackIndex = Math.min(10, Math.max(headers.length - 1, 0));
+  const index = headers.findIndex((header) =>
+    normalizeHeader(header).includes("strvnosaukums")
+  );
+  return index >= 0 ? index : fallbackIndex;
+};
+
+const getTargetDateIndex = (headers: string[]) => {
+  const fallbackIndex = Math.min(2, Math.max(headers.length - 1, 0));
+  const index = headers.findIndex((header) =>
+    normalizeHeader(header).includes("dokdatums")
+  );
+  return index >= 0 ? index : fallbackIndex;
+};
+
 const normalizeNumber = (value: string) => {
   const trimmed = value.trim();
   if (!trimmed) {
@@ -102,6 +151,7 @@ const findSplitMatches = (
     veidlapas: string;
     dokumentaSumma: string;
     dokumentaSummaCents: number | null;
+    targetVenue: string;
   }>,
   targetCents: number
 ) => {
@@ -141,20 +191,46 @@ const findSplitMatches = (
   return search(0, [], 0);
 };
 
+const pickBestCandidate = <
+  T extends { targetVenue: string }
+>(
+  matches: T[],
+  sourceVenueToken: string
+) => {
+  if (matches.length <= 1 || !sourceVenueToken) {
+    return matches[0];
+  }
+
+  const venueMatches = matches.filter(
+    (match) => getFirstWordToken(match.targetVenue) === sourceVenueToken
+  );
+  return venueMatches[0] ?? matches[0];
+};
+
 export const runLieliskaJob = (preview: ExcelPreviewData): LieliskaJobResult => {
   validateExpectedColumns(preview.headers);
   const columnCount = preview.headers.length;
   const veidlapasIndex = columnCount - 3;
   const svitrkodsIndex = columnCount - 2;
   const summaIndex = columnCount - 1;
+  const targetDateIndex = getTargetDateIndex(preview.headers);
+  const targetVenueIndex = getTargetVenueIndex(preview.headers);
   const targetRows = preview.rows.slice(0, preview.sourceRowCount);
   const baseRows = targetRows.map((row) => row.slice());
   const hasInlineSource = targetRows.some(
     (row) => (row[svitrkodsIndex] ?? "").trim() || (row[summaIndex] ?? "").trim()
   );
-  const sourcePairs = hasInlineSource
-    ? targetRows.map((row) => [row[svitrkodsIndex] ?? "", row[summaIndex] ?? ""])
-    : (preview.sourcePairs ?? []);
+  const sourceEntries: LieliskaSourceEntry[] = hasInlineSource
+    ? targetRows.map((row) => ({
+        svitrkods: row[svitrkodsIndex] ?? "",
+        summa: row[summaIndex] ?? "",
+        datums: row[targetDateIndex] ?? "",
+      }))
+    : preview.sourceEntries ??
+      (preview.sourcePairs ?? []).map(([svitrkods, summa]) => ({
+        svitrkods: svitrkods ?? "",
+        summa: summa ?? "",
+      }));
   const usedTargets = new Set<number>();
   const unmatchedSourceRows: string[][] = [];
   const tempPairs = Array.from({ length: targetRows.length }, () => ({
@@ -162,9 +238,17 @@ export const runLieliskaJob = (preview: ExcelPreviewData): LieliskaJobResult => 
     summa: "",
   }));
 
-  sourcePairs.forEach(([sourceSvitrkods, sourceSumma]) => {
+  sourceEntries.forEach(
+    ({
+      svitrkods: sourceSvitrkods,
+      summa: sourceSumma,
+      datums,
+      tirdzniecibasVieta,
+    }) => {
     const svitrkods = sourceSvitrkods ?? "";
     const summa = sourceSumma ?? "";
+    const sourceDate = normalizeSourceDate(datums ?? "");
+    const sourceVenueToken = getFirstWordToken(tirdzniecibasVieta ?? "");
     const lastFour = getLastFourDigits(svitrkods);
     if (!lastFour) {
       if (!svitrkods.trim() && !summa.trim()) {
@@ -178,8 +262,10 @@ export const runLieliskaJob = (preview: ExcelPreviewData): LieliskaJobResult => 
       .map((targetRow, targetIndex) => ({
         targetIndex,
         veidlapas: targetRow[veidlapasIndex] ?? "",
+        dokumentaDatums: normalizeTargetDate(targetRow[targetDateIndex] ?? ""),
         dokumentaSumma: targetRow[5] ?? "",
         dokumentaSummaCents: toCents(targetRow[5] ?? ""),
+        targetVenue: targetRow[targetVenueIndex] ?? "",
       }))
       .filter(({ veidlapas }) => getLastFourDigits(veidlapas).endsWith(lastFour));
 
@@ -188,13 +274,19 @@ export const runLieliskaJob = (preview: ExcelPreviewData): LieliskaJobResult => 
       return;
     }
 
+    const dateMatches = sourceDate
+      ? matches.filter((match) => match.dokumentaDatums === sourceDate)
+      : [];
+    const candidatePool = dateMatches.length > 0 ? dateMatches : matches;
+
     const hasSumColumn = columnCount > 5;
     const sourceSumCents = toCents(summa);
     const sumMatches = hasSumColumn
-      ? matches.filter((match) => match.dokumentaSumma === summa)
+      ? candidatePool.filter((match) => match.dokumentaSumma === summa)
       : [];
-    const availableSumMatch = sumMatches.find(
-      (match) => !usedTargets.has(match.targetIndex)
+    const availableSumMatch = pickBestCandidate(
+      sumMatches.filter((match) => !usedTargets.has(match.targetIndex)),
+      sourceVenueToken
     );
     if (availableSumMatch) {
       usedTargets.add(availableSumMatch.targetIndex);
@@ -202,7 +294,9 @@ export const runLieliskaJob = (preview: ExcelPreviewData): LieliskaJobResult => 
       return;
     }
 
-    const availableMatches = matches.filter((match) => !usedTargets.has(match.targetIndex));
+    const availableMatches = candidatePool.filter(
+      (match) => !usedTargets.has(match.targetIndex)
+    );
     const splitMatches =
       sourceSumCents === null
         ? null
@@ -219,7 +313,7 @@ export const runLieliskaJob = (preview: ExcelPreviewData): LieliskaJobResult => 
       return;
     }
 
-    const available = availableMatches[0];
+    const available = pickBestCandidate(availableMatches, sourceVenueToken);
     if (!available) {
       unmatchedSourceRows.push([svitrkods, summa]);
       return;
@@ -227,7 +321,8 @@ export const runLieliskaJob = (preview: ExcelPreviewData): LieliskaJobResult => 
 
     usedTargets.add(available.targetIndex);
     tempPairs[available.targetIndex] = { svitrkods, summa };
-  });
+    }
+  );
 
   const mergedRows = baseRows.map((row, index) => {
     const next = row.slice();

@@ -33,6 +33,7 @@ Read this file first when working in the repo. It is the source of truth for whe
 ### Assets and scripts
 - `scripts/token_count.mjs`: Token counter (o200k_base) for file size checks.
 - `scripts/token_report.mjs`: Token report for all src files.
+- `scripts/check_live_version.mjs`: Fetches the live GitHub Pages app and verifies the deployed asset version against the expected commit SHA.
 - `data/akts.pdf`: Sample PDF.
 - `public/404.html`: GitHub Pages SPA fallback redirect for direct route links.
 
@@ -41,6 +42,7 @@ Read this file first when working in the repo. It is the source of truth for whe
 - `tests/davanu_job.test.js`: Unit tests for Davanu run job matching logic.
 - `tests/davanu_parser.test.js`: Unit tests for PDF header detection edge cases.
 - `tests/lieliska_job.test.js`: Unit tests for Lieliska run job matching and duplicate handling.
+- `tests/lieliska_job_real_workbook.test.js`: Regression tests for Lieliska against real workbook layouts and edge cases.
 
 ### Notes
 - Do not place parsing/transform logic in `src/App.tsx`.

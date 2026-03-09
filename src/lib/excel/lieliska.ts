@@ -12,6 +12,12 @@ export type ExcelPreviewData = {
   sourceRowCount: number;
   originalBuffer: ArrayBuffer;
   sourcePairs?: string[][];
+  sourceEntries?: Array<{
+    svitrkods: string;
+    summa: string;
+    datums?: string;
+    tirdzniecibasVieta?: string;
+  }>;
   autoAddedSvitrkodsColumn?: boolean;
 };
 
@@ -109,24 +115,46 @@ export const parseLieliskaWorkbook = async (
   });
 
   let sourcePairs: string[][] | undefined;
+  let sourceEntries:
+    | Array<{
+        svitrkods: string;
+        summa: string;
+        datums?: string;
+        tirdzniecibasVieta?: string;
+      }>
+    | undefined;
   const sourceSheet =
     workbook.worksheets.find((sheet) => sheet !== worksheet && isLieliskaSourceSheet(sheet)) ??
     workbook.worksheets.find((sheet) => sheet.name.toLowerCase() === "lieliska");
   if (sourceSheet) {
     const sourceHeaders = getWorksheetHeaders(sourceSheet);
+    const dateIndex = findHeaderIndex(sourceHeaders, "datums");
     const svIndex = findHeaderIndex(sourceHeaders, "svitrkods");
     const sumIndex = findHeaderIndex(sourceHeaders, "summa");
+    const venueIndex = findHeaderIndex(sourceHeaders, "tirdzniec");
     if (svIndex >= 0 && sumIndex >= 0) {
-      sourcePairs = Array.from(
+      sourceEntries = Array.from(
         { length: Math.max((sourceSheet.actualRowCount ?? 0) - 1, 0) },
         (_, rowIndex) => {
           const row = sourceSheet.getRow(rowIndex + 2);
-          return [
-            formatCellValue(row.getCell(svIndex + 1)),
-            formatCellValue(row.getCell(sumIndex + 1)),
-          ];
+          return {
+            svitrkods: formatCellValue(row.getCell(svIndex + 1)),
+            summa: formatCellValue(row.getCell(sumIndex + 1)),
+            datums:
+              dateIndex >= 0
+                ? formatCellValue(row.getCell(dateIndex + 1))
+                : undefined,
+            tirdzniecibasVieta:
+              venueIndex >= 0
+                ? formatCellValue(row.getCell(venueIndex + 1))
+                : undefined,
+          };
         }
-      ).filter(([sv, sum]) => sv.trim().length > 0 || sum.trim().length > 0);
+      ).filter(
+        ({ svitrkods, summa }) =>
+          svitrkods.trim().length > 0 || summa.trim().length > 0
+      );
+      sourcePairs = sourceEntries.map(({ svitrkods, summa }) => [svitrkods, summa]);
     }
   }
 
@@ -144,6 +172,7 @@ export const parseLieliskaWorkbook = async (
     sourceRowCount: rows.length,
     originalBuffer: arrayBuffer.slice(0),
     sourcePairs,
+    sourceEntries,
     autoAddedSvitrkodsColumn: false,
   };
 };
