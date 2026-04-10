@@ -53,11 +53,21 @@ const normalizeHeader = (value: string) =>
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "");
+    .replace(/[^\p{L}\p{N}]+/gu, "");
 
 const findHeaderIndex = (headers: string[], pattern: string) => {
   const target = normalizeHeader(pattern);
   return headers.findIndex((header) => normalizeHeader(header).includes(target));
+};
+
+const findHeaderIndexAny = (headers: string[], patterns: string[]) => {
+  for (const pattern of patterns) {
+    const index = findHeaderIndex(headers, pattern);
+    if (index >= 0) {
+      return index;
+    }
+  }
+  return -1;
 };
 
 const getWorksheetHeaders = (worksheet: ExcelJS.Worksheet) => {
@@ -70,8 +80,8 @@ const getWorksheetHeaders = (worksheet: ExcelJS.Worksheet) => {
 const isLieliskaSourceSheet = (worksheet: ExcelJS.Worksheet) => {
   const headers = getWorksheetHeaders(worksheet);
   return (
-    findHeaderIndex(headers, "svitrkods") >= 0 &&
-    findHeaderIndex(headers, "summa") >= 0
+    findHeaderIndexAny(headers, ["svitrkods", "штрихкод", "barcode"]) >= 0 &&
+    findHeaderIndexAny(headers, ["summa", "сумма", "amount"]) >= 0
   );
 };
 
@@ -128,10 +138,27 @@ export const parseLieliskaWorkbook = async (
     workbook.worksheets.find((sheet) => sheet.name.toLowerCase() === "lieliska");
   if (sourceSheet) {
     const sourceHeaders = getWorksheetHeaders(sourceSheet);
-    const dateIndex = findHeaderIndex(sourceHeaders, "datums");
-    const svIndex = findHeaderIndex(sourceHeaders, "svitrkods");
-    const sumIndex = findHeaderIndex(sourceHeaders, "summa");
-    const venueIndex = findHeaderIndex(sourceHeaders, "tirdzniec");
+    const dateIndex = findHeaderIndexAny(sourceHeaders, [
+      "datums",
+      "дата",
+      "date",
+    ]);
+    const svIndex = findHeaderIndexAny(sourceHeaders, [
+      "svitrkods",
+      "штрихкод",
+      "barcode",
+    ]);
+    const sumIndex = findHeaderIndexAny(sourceHeaders, [
+      "summa",
+      "сумма",
+      "amount",
+    ]);
+    const venueIndex = findHeaderIndexAny(sourceHeaders, [
+      "tirdzniec",
+      "торгов",
+      "store",
+      "shop",
+    ]);
     if (svIndex >= 0 && sumIndex >= 0) {
       sourceEntries = Array.from(
         { length: Math.max((sourceSheet.actualRowCount ?? 0) - 1, 0) },

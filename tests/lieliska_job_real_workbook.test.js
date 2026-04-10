@@ -84,4 +84,15 @@ describe("runLieliskaJob real workbooks", () => {
     expect(rowByNumurs.get("Z-54189853-110226_01")?.[13]).toBe("50");
     expect(rowByNumurs.get("Z-73397919-150226")?.[12]).toBe("");
   });
+
+  it("parses russian Sheet2 headers in Lieliska 032026 and produces matches", async () => {
+    const preview = await loadPreview("Lieliska 032026.xlsx");
+    const normalized = ensureLieliskaRunSchema(preview);
+    const result = runLieliskaJob(normalized);
+    const rowByNumurs = new Map(result.rows.map((row) => [row[1], row]));
+
+    expect(preview.sourcePairs?.length).toBeGreaterThan(0);
+    expect(rowByNumurs.get("Z-64463970-010326")?.[12]).toBe("000000000000005342");
+    expect(rowByNumurs.get("Z-64463970-010326")?.[13]).toBe("50");
+  });
 });
