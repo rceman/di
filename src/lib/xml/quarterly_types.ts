@@ -8,6 +8,7 @@ export type QuarterlyXmlRow = {
 };
 
 export type QuarterlyXmlData = {
+  isCorrection: boolean;
   declarationId: string;
   declarationUid: string;
   registrationNumber: string;
@@ -22,6 +23,10 @@ export type QuarterlyXmlData = {
   preparer: string;
   phone: string;
   email: string;
+  signer: string;
+  signerIdentityNo: string;
+  signerRole: string;
+  signerEmail: string;
   rows: QuarterlyXmlRow[];
 };
 

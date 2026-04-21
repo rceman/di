@@ -41,16 +41,34 @@ const renderRowXml = (row: QuarterlyXmlRow) => {
   ].join("\n");
 };
 
+const pad = (value: number, width = 2) => String(value).padStart(width, "0");
+
+const formatTimestampWithOffset = (value: Date) => {
+  const year = value.getFullYear();
+  const month = pad(value.getMonth() + 1);
+  const day = pad(value.getDate());
+  const hours = pad(value.getHours());
+  const minutes = pad(value.getMinutes());
+  const seconds = pad(value.getSeconds());
+  const millis = pad(value.getMilliseconds(), 3);
+  const tzMinutes = -value.getTimezoneOffset();
+  const sign = tzMinutes >= 0 ? "+" : "-";
+  const abs = Math.abs(tzMinutes);
+  const tzHours = pad(Math.floor(abs / 60));
+  const tzMins = pad(abs % 60);
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${millis}${sign}${tzHours}:${tzMins}`;
+};
+
 export const buildQuarterlyXml = (data: QuarterlyXmlData) => {
   const rowsXml = data.rows.map((row) => renderRowXml(row)).join("\n");
-  const timestamp = new Date().toISOString();
+  const timestamp = formatTimestampWithOffset(new Date());
 
   return [
     "<?xml version=\"1.0\" encoding=\"utf-8\"?>",
     "<DeclarationFile>",
     "  <Declaration Id=\"DEC\">",
     "    <DokPKIv2 xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\">",
-    "      <Precizejums>false</Precizejums>",
+    `      <Precizejums>${data.isCorrection ? "true" : "false"}</Precizejums>`,
     `      <Id>${xmlEscape(data.declarationId)}</Id>`,
     `      <UID>${xmlEscape(data.declarationUid)}</UID>`,
     `      <NmrKods>${xmlEscape(data.registrationNumber)}</NmrKods>`,
@@ -70,15 +88,15 @@ export const buildQuarterlyXml = (data: QuarterlyXmlData) => {
     "  </Declaration>",
     "  <UserCredentials xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" Id=\"UC_1\">",
     `    <Drawer>${xmlEscape(data.preparer)}</Drawer>`,
-    "    <Signer />",
-    "    <SignerIdentityNo />",
-    "    <SignerRole />",
-    `    <EmailForResponse>${xmlEscape(data.email)}</EmailForResponse>`,
+    `    <Signer>${xmlEscape(data.signer || data.preparer)}</Signer>`,
+    `    <SignerIdentityNo>${xmlEscape(data.signerIdentityNo)}</SignerIdentityNo>`,
+    `    <SignerRole>${xmlEscape(data.signerRole)}</SignerRole>`,
+    `    <EmailForResponse>${xmlEscape(data.signerEmail || data.email)}</EmailForResponse>`,
     `    <Timestamp>${timestamp}</Timestamp>`,
     `    <TaxPayerNo>${xmlEscape(data.registrationNumber)}</TaxPayerNo>`,
     `    <TaxPayerName>${xmlEscape(data.companyName)}</TaxPayerName>`,
     `    <AddressForResponse>${xmlEscape(data.address)}</AddressForResponse>`,
-    "    <IsCorrectionDocument>false</IsCorrectionDocument>",
+    `    <IsCorrectionDocument>${data.isCorrection ? "true" : "false"}</IsCorrectionDocument>`,
     "    <PrecDeclNum xsi:nil=\"true\" />",
     "  </UserCredentials>",
     "</DeclarationFile>",

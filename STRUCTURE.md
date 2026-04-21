@@ -39,6 +39,7 @@ Read this file first when working in the repo. It is the source of truth for whe
 - `scripts/token_count.mjs`: Token counter (o200k_base) for file size checks.
 - `scripts/token_report.mjs`: Token report for all src files.
 - `scripts/check_live_version.mjs`: Fetches the live GitHub Pages app and verifies the deployed asset version against the expected commit SHA.
+- `xml_feature.md`: XLSX to XML mapping, defaults, and placeholder-field documentation.
 - `data/akts.pdf`: Sample PDF.
 - `public/404.html`: GitHub Pages SPA fallback redirect for direct route links.
 

@@ -35,32 +35,46 @@ const createWorkbook = async () => {
   ws.getCell("C7").value = "Cits";
   ws.getCell("A8").value = "Kvīšu numuru reģistrēšanas";
   ws.getCell("C8").value = "VID reģistrētās kvīšu grāmatiņas vai numuri";
+  ws.getCell("A10").value = "Sagatavoja vārds, uzvārds";
+  ws.getCell("C10").value = "JULIJA CEVERDENKO";
+  ws.getCell("A11").value = "Sagatavoja E-pasts";
+  ws.getCell("C11").value = "julija@example.com";
+  ws.getCell("A12").value = "Sagatavoja Tālrunis";
+  ws.getCell("C12").value = "+37120000000";
+  ws.getCell("A13").value = "Parakstītāja vārds, uzvārds";
+  ws.getCell("C13").value = "LILIJA ADEJEVA";
+  ws.getCell("A14").value = "Parakstītāja personas kods";
+  ws.getCell("C14").value = "12017312050";
+  ws.getCell("A15").value = "Parakstītāja prof.";
+  ws.getCell("C15").value = "Galvenā grāmatvede";
+  ws.getCell("A16").value = "Parakstītāja E-pasts";
+  ws.getCell("C16").value = "lilija@example.com";
 
-  ws.getCell("A11").value = "Izlietots vai anulēts";
-  ws.getCell("B11").value = "Kvīšu reģistrēšanas datums";
-  ws.getCell("C11").value = "Sērija";
-  ws.getCell("D11").value = "Numurs";
-  ws.getCell("E11").value = "Numurs";
-  ws.getCell("A12").value = "Izlietots vai anulēts";
-  ws.getCell("B12").value = "Kvīšu reģistrēšanas datums";
-  ws.getCell("C12").value = "Sērija";
-  ws.getCell("D12").value = "No";
-  ws.getCell("E12").value = "Līdz";
-  ws.getCell("A13").value = "1";
+  ws.getCell("A18").value = "Izlietots vai anulēts";
+  ws.getCell("B18").value = "Kvīšu reģistrēšanas datums";
+  ws.getCell("C18").value = "Sērija";
+  ws.getCell("D18").value = "Numurs";
+  ws.getCell("E18").value = "Numurs";
+  ws.getCell("A19").value = "Izlietots vai anulēts";
+  ws.getCell("B19").value = "Kvīšu reģistrēšanas datums";
+  ws.getCell("C19").value = "Sērija";
+  ws.getCell("D19").value = "No";
+  ws.getCell("E19").value = "Līdz";
+  ws.getCell("A20").value = "1";
 
-  ws.getCell("A14").value = "Izlietots";
-  ws.getCell("B14").value = new Date("2026-01-15T00:00:00Z");
-  ws.getCell("C14").value = "PA";
-  ws.getCell("D14").value = "100";
-  ws.getCell("E14").value = "102";
-  ws.getCell("G14").value = "120,4";
+  ws.getCell("A21").value = "Izlietots";
+  ws.getCell("B21").value = new Date("2026-01-15T00:00:00Z");
+  ws.getCell("C21").value = "PA";
+  ws.getCell("D21").value = "100";
+  ws.getCell("E21").value = "102";
+  ws.getCell("G21").value = "120,4";
 
-  ws.getCell("A15").value = "Anulēts";
-  ws.getCell("B15").value = new Date("2026-02-01T00:00:00Z");
-  ws.getCell("C15").value = "PA";
-  ws.getCell("D15").value = "200";
-  ws.getCell("E15").value = "200";
-  ws.getCell("G15").value = "0";
+  ws.getCell("A22").value = "Anulēts";
+  ws.getCell("B22").value = new Date("2026-02-01T00:00:00Z");
+  ws.getCell("C22").value = "PA";
+  ws.getCell("D22").value = "200";
+  ws.getCell("E22").value = "200";
+  ws.getCell("G22").value = "0";
 
   return workbook;
 };
@@ -75,6 +89,13 @@ describe("quarterly xml conversion", () => {
     expect(preview.xmlData.companyName).toBe("GIVEN LATVIA SIA");
     expect(preview.xmlData.year).toBe("2026");
     expect(preview.xmlData.quarter).toBe("1");
+    expect(preview.xmlData.preparer).toBe("JULIJA CEVERDENKO");
+    expect(preview.xmlData.phone).toBe("+37120000000");
+    expect(preview.xmlData.email).toBe("julija@example.com");
+    expect(preview.xmlData.signer).toBe("LILIJA ADEJEVA");
+    expect(preview.xmlData.signerIdentityNo).toBe("12017312050");
+    expect(preview.xmlData.signerRole).toBe("Galvenā grāmatvede");
+    expect(preview.xmlData.signerEmail).toBe("lilija@example.com");
     expect(preview.rows.length).toBe(2);
     expect(preview.xmlData.rows[0]).toMatchObject({
       groupCode: "I",
@@ -84,6 +105,7 @@ describe("quarterly xml conversion", () => {
       numberTo: "102",
       amount: "120.40",
     });
+    expect(preview.xmlData.isCorrection).toBe(false);
     expect(preview.xmlData.rows[1]).toMatchObject({
       groupCode: "A",
       amount: null,
@@ -92,6 +114,7 @@ describe("quarterly xml conversion", () => {
 
   it("builds xml with escaped values and annulled nil amount", () => {
     const xml = buildQuarterlyXml({
+      isCorrection: false,
       declarationId: "2026033103166474",
       declarationUid: "uid-1",
       registrationNumber: "40203166474",
@@ -106,6 +129,10 @@ describe("quarterly xml conversion", () => {
       preparer: "Test User",
       phone: "",
       email: "",
+      signer: "Signer Name",
+      signerIdentityNo: "010101-12345",
+      signerRole: "Role",
+      signerEmail: "signer@example.com",
       rows: [
         {
           groupCode: "I",
@@ -128,6 +155,13 @@ describe("quarterly xml conversion", () => {
 
     expect(xml).toContain("<TaxPayerName>GIVEN &amp; Co</TaxPayerName>");
     expect(xml).toContain("<AddressForResponse>Street &lt;1&gt;</AddressForResponse>");
+    expect(xml).toContain("<Signer>Signer Name</Signer>");
+    expect(xml).toContain("<SignerIdentityNo>010101-12345</SignerIdentityNo>");
+    expect(xml).toContain("<SignerRole>Role</SignerRole>");
+    expect(xml).toContain("<EmailForResponse>signer@example.com</EmailForResponse>");
+    expect(xml).toContain("<Precizejums>false</Precizejums>");
+    expect(xml).toContain("<IsCorrectionDocument>false</IsCorrectionDocument>");
+    expect(xml).toMatch(/<Timestamp>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}[+-]\d{2}:\d{2}<\/Timestamp>/);
     expect(xml).toContain("<Summa>50.00</Summa>");
     expect(xml).toContain("<Summa xsi:nil=\"true\" />");
   });

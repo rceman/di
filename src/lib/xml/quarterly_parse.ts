@@ -2,6 +2,9 @@ import ExcelJS from "exceljs";
 import type { QuarterlyXmlData, QuarterlyXmlPreview, QuarterlyXmlRow } from "./quarterly_types";
 
 const META_LABELS = {
+  correction: "precizejums",
+  declarationId: "id",
+  declarationUid: "uid",
   registrationNumber: "reģistrācijas numurs",
   companyName: "nosaukums",
   address: "adrese",
@@ -9,6 +12,13 @@ const META_LABELS = {
   periodTo: "līdz",
   submitterInfo: "informācija par iesniedzēju",
   receiptType: "kvīšu numuru reģistrēšanas",
+  preparerName: "sagatavoja vārds, uzvārds",
+  preparerEmail: "sagatavoja e-pasts",
+  preparerPhone: "sagatavoja tālrunis",
+  signerName: "parakstītāja vārds, uzvārds",
+  signerIdentityNo: "parakstītāja personas kods",
+  signerRole: "parakstītāja prof.",
+  signerEmail: "parakstītāja e-pasts",
 } as const;
 
 export const TABLE_HEADERS = [
@@ -42,7 +52,10 @@ const asText = (cell: ExcelJS.Cell) => (cell.text ?? "").trim();
 const asIsoDate = (cell: ExcelJS.Cell): string | null => {
   const value = cell.value;
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
-    return value.toISOString().slice(0, 10);
+    const year = String(value.getFullYear());
+    const month = String(value.getMonth() + 1).padStart(2, "0");
+    const day = String(value.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
   }
   const text = asText(cell);
   if (!text) return null;
@@ -57,7 +70,11 @@ const asIsoDate = (cell: ExcelJS.Cell): string | null => {
     return `${isoPrefix[1]}-${isoPrefix[2]}-${isoPrefix[3]}`;
   }
   const parsed = new Date(text);
-  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString().slice(0, 10);
+  if (Number.isNaN(parsed.getTime())) return null;
+  const year = String(parsed.getFullYear());
+  const month = String(parsed.getMonth() + 1).padStart(2, "0");
+  const day = String(parsed.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 };
 
 const parseAmount = (value: string): string | null => {
@@ -73,11 +90,22 @@ const inferQuarter = (periodFromIso: string): { year: string; quarter: string } 
   return { year: periodFromIso.slice(0, 4), quarter: String(quarter) };
 };
 
-const mapSubmitterType = (value: string) =>
-  normalizeText(value).startsWith("cits") ? "C" : "C";
+const mapSubmitterType = (value: string): string | null => {
+  const normalized = normalizeText(value);
+  if (!normalized) return null;
+  if (normalized.startsWith("cits")) return "C";
+  if (normalized.startsWith("komersants")) return "K";
+  if (normalized.startsWith("fiziska")) return "F";
+  return null;
+};
 
-const mapReceiptType = (value: string) =>
-  normalizeText(value).includes("vid registre") ? "P" : "P";
+const mapReceiptType = (value: string): string | null => {
+  const normalized = normalizeText(value);
+  if (!normalized) return null;
+  if (normalized.includes("vid registre")) return "P";
+  if (normalized.includes("numuresanas")) return "N";
+  return null;
+};
 
 const mapGroupCode = (value: string): "I" | "A" | null => {
   const normalized = normalizeText(value);
@@ -100,6 +128,9 @@ const readMeta = (worksheet: ExcelJS.Worksheet) => {
     values.set(metaKey, dateValue ?? asText(valueCell));
   }
   return {
+    correction: values.get("correction") ?? "",
+    declarationId: values.get("declarationId") ?? "",
+    declarationUid: values.get("declarationUid") ?? "",
     registrationNumber: values.get("registrationNumber") ?? "",
     companyName: values.get("companyName") ?? "",
     address: values.get("address") ?? "",
@@ -107,6 +138,13 @@ const readMeta = (worksheet: ExcelJS.Worksheet) => {
     periodTo: values.get("periodTo") ?? "",
     submitterInfo: values.get("submitterInfo") ?? "",
     receiptTypeInfo: values.get("receiptType") ?? "",
+    preparerName: values.get("preparerName") ?? "",
+    preparerEmail: values.get("preparerEmail") ?? "",
+    preparerPhone: values.get("preparerPhone") ?? "",
+    signerName: values.get("signerName") ?? "",
+    signerIdentityNo: values.get("signerIdentityNo") ?? "",
+    signerRole: values.get("signerRole") ?? "",
+    signerEmail: values.get("signerEmail") ?? "",
   };
 };
 
@@ -204,9 +242,20 @@ export const parseQuarterlyXmlWorkbook = async (file: File): Promise<QuarterlyXm
   const periodFrom = meta.periodFrom || new Date().toISOString().slice(0, 10);
   const periodTo = meta.periodTo || periodFrom;
   const inferred = inferQuarter(periodFrom);
+  const submitterType = mapSubmitterType(meta.submitterInfo);
+  const receiptType = mapReceiptType(meta.receiptTypeInfo);
+  if (!submitterType) {
+    warnings.push("Submitter type was not recognized, fallback value C applied.");
+  }
+  if (!receiptType) {
+    warnings.push("Receipt type was not recognized, fallback value P applied.");
+  }
+  const correctionNormalized = normalizeText(meta.correction);
+  const isCorrection = correctionNormalized === "true" || correctionNormalized === "ja";
   const xmlData: QuarterlyXmlData = {
-    declarationId: buildDeclarationId(meta.registrationNumber, periodTo),
-    declarationUid: makeUid(),
+    isCorrection,
+    declarationId: meta.declarationId || buildDeclarationId(meta.registrationNumber, periodTo),
+    declarationUid: meta.declarationUid || makeUid(),
     registrationNumber: meta.registrationNumber,
     companyName: meta.companyName,
     address: meta.address,
@@ -214,11 +263,15 @@ export const parseQuarterlyXmlWorkbook = async (file: File): Promise<QuarterlyXm
     periodTo,
     year: inferred.year,
     quarter: inferred.quarter,
-    submitterType: mapSubmitterType(meta.submitterInfo),
-    receiptType: mapReceiptType(meta.receiptTypeInfo),
-    preparer: meta.companyName,
-    phone: "",
-    email: "",
+    submitterType: submitterType ?? "C",
+    receiptType: receiptType ?? "P",
+    preparer: meta.preparerName || meta.companyName,
+    phone: meta.preparerPhone,
+    email: meta.preparerEmail,
+    signer: meta.signerName,
+    signerIdentityNo: meta.signerIdentityNo,
+    signerRole: meta.signerRole,
+    signerEmail: meta.signerEmail,
     rows,
   };
 
