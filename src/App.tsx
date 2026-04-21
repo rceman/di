@@ -3,15 +3,18 @@ import { useEffect, useState } from "react";
 import { Button } from "./components/ui/button";
 import DavanuPage from "./pages/DavanuPage";
 import LieliskaPage from "./pages/LieliskaPage";
+import XmlPage from "./pages/XmlPage";
 
 const PAGES = {
   lieliska: "Lieliska DK",
   davanu: "Davanu serviss",
+  xml: "XLSX to XML",
 } as const;
 
 const ROUTES = {
   [PAGES.lieliska]: "/lieliska_dk",
   [PAGES.davanu]: "/davanu_serviss",
+  [PAGES.xml]: "/xlsx_to_xml",
 } as const;
 
 const BASE_URL = import.meta.env.BASE_URL.replace(/\/+$/, "");
@@ -44,6 +47,9 @@ export default function App() {
       const localPath = withoutBase(pathname);
       if (localPath === ROUTES[PAGES.davanu]) {
         return PAGES.davanu;
+      }
+      if (localPath === ROUTES[PAGES.xml]) {
+        return PAGES.xml;
       }
       return PAGES.lieliska;
     };
@@ -78,7 +84,7 @@ export default function App() {
         className="mx-auto flex w-full max-w-none flex-col gap-6 px-2 py-10 md:px-4"
       >
         <div id="page-tabs" className="flex flex-wrap gap-3">
-          {[PAGES.lieliska, PAGES.davanu].map((page) => (
+          {[PAGES.lieliska, PAGES.davanu, PAGES.xml].map((page) => (
             <Button
               key={page}
               type="button"
@@ -100,7 +106,13 @@ export default function App() {
         </header>
 
         <div id="app-content" className="flex flex-col gap-6">
-          {activePage === PAGES.lieliska ? <LieliskaPage /> : <DavanuPage />}
+          {activePage === PAGES.lieliska ? (
+            <LieliskaPage />
+          ) : activePage === PAGES.davanu ? (
+            <DavanuPage />
+          ) : (
+            <XmlPage />
+          )}
         </div>
       </div>
     </div>
